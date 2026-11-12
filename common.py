@@ -498,5 +498,63 @@ def apply_style():
                 min-width: 88px;
             }
         }
+
+
+/* BUG TRACE: warm beige CRT research lab, high contrast override */
+:root {
+ --bt-bg:#F5F0E4; --bt-panel:#FFFCF5; --bt-line:#B7BEA6;
+ --bt-text:#233529; --bt-dim:#4D5E50; --bt-lime:#D7EAA4;
+ --bt-lime-soft:#EDF5D8; --bt-lime-line:#72944F;
+ --bt-glow:0 4px 15px rgba(63,80,43,.12);
+ --bt-red:#A94135; --bt-yellow:#80610E; --bt-sky:#285C86;
+}
+html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] { background:#F5F0E4 !important; color:#233529 !important; }
+[data-testid="stHeader"], header[data-testid="stHeader"], [data-testid="stTopNav"], [data-testid="stNavigation"], [data-testid="stTopNav"] nav, [data-testid="stNavigation"] nav { background:#E9E0CD !important; color:#233529 !important; border-bottom:1px solid #ACB49C !important; }
+[data-testid="stTopNav"] a, [data-testid="stTopNav"] button, [data-testid="stNavigation"] a, [data-testid="stNavigation"] button, header[data-testid="stHeader"] a,
+[data-testid="stTopNav"] a *, [data-testid="stTopNav"] button *, [data-testid="stNavigation"] a *, [data-testid="stNavigation"] button * {
+ color:#24382A !important; opacity:1 !important; -webkit-text-fill-color:#24382A !important; font-size:16px !important; font-weight:800 !important;
+}
+[data-testid="stTopNav"] a[aria-current="page"], [data-testid="stNavigation"] a[aria-current="page"], [data-testid="stTopNav"] a[aria-selected="true"], [data-testid="stNavigation"] a[aria-selected="true"] { background:#C9DE91 !important; border-radius:9px; }
+[data-testid="stTopNav"] a:hover, [data-testid="stNavigation"] a:hover {background:#D8E8B9 !important;}
+[data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, [data-testid="stWidgetLabel"] p,
+[data-testid="stCaptionContainer"] p, [data-testid="stHelperText"] p, [data-testid="stMetricLabel"] p {color:#344839 !important;opacity:1 !important; -webkit-text-fill-color:initial !important;}
+[data-testid="stCaptionContainer"] p {font-size:14px !important;}
+.bt-header {border-bottom:2px solid #B7BEA6;}
+.bt-title,.bt-card-title {color:#203A28 !important;}
+.bt-desc,.bt-card-summary,.bt-step-text,.bt-flow-text {color:#435448 !important;}
+.bt-card-tech,.bt-no,.bt-tag,.bt-flow-name,.bt-flow-box .bt-icon,.bt-title .bt-icon,.bt-badge-on {color:#406A2D !important;}
+.bt-card,.bt-box {background:#FFFCF5 !important;color:#233529 !important;border-color:#B7BEA6 !important;box-shadow:0 2px 9px rgba(35,53,41,.06);}
+.bt-box-label {font-weight:800;}
+.bt-ok .bt-box-label,.bt-basis-ok {color:#406A2D !important;}
+.bt-err .bt-box-label,.bt-flow-out .bt-flow-name {color:#A94135 !important;}
+.bt-key .bt-box-label,.bt-basis-guess {color:#80610E !important;}
+.bt-obs .bt-box-label {color:#285C86 !important;}
+.bt-flow-box {background:#EEF5DA !important; border-color:#85A661 !important;box-shadow:none !important;}
+.bt-flow-out {background:#FFF0E8 !important;border-color:#BD7D68 !important;}
+.bt-step-no {background:#DFECC2 !important;color:#335D2C !important;}
+.bt-arrow,.bt-flow-arrow {color:#557E38 !important;}
+.bt-badge,.bt-tag,.bt-basis {background:#F4F5E9 !important;border-color:#B5C4A4 !important;color:#3B5D35 !important;}
+[data-testid="stVerticalBlockBorderWrapper"] {background:#FFFCF5 !important;border-color:#C4C8B5 !important;box-shadow:0 3px 14px rgba(45,58,37,.06);}
+div.stButton > button,div.stButton > button *,div[data-testid="stPageLink"] a,div[data-testid="stPageLink"] a * {
+ color:#233529 !important; -webkit-text-fill-color:#233529 !important; background:#E9EEDB !important;
+ border-color:#879D75 !important;opacity:1 !important;font-weight:800 !important;
+}
+div.stButton > button,div[data-testid="stPageLink"] a {min-height:54px !important; border-radius:10px !important; font-size:17px !important;}
+div.stButton > button:hover,div[data-testid="stPageLink"] a:hover {background:#D8E7B8 !important;border-color:#527D39 !important;}
+div.stButton > button[kind="primary"],div.stButton > button[kind="primary"] *,div.stButton > button[data-testid="stBaseButton-primary"],div.stButton > button[data-testid="stBaseButton-primary"] * {background:#C9E28E !important;color:#1E3022 !important;-webkit-text-fill-color:#1E3022 !important;}
+div[data-testid="stRadio"] > div[role="radiogroup"] > label {background:#FFFDF5 !important;border:2px solid #9DAE8D !important;min-height:52px !important;min-width:94px !important;border-radius:10px !important;}
+div[data-testid="stRadio"] > div[role="radiogroup"] > label p,div[data-testid="stRadio"] > div[role="radiogroup"] > label span {color:#24382A !important;-webkit-text-fill-color:#24382A !important;font-size:16px !important;font-weight:800 !important;}
+div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {background:#C9E28E !important;border-color:#557E38 !important;box-shadow:inset 0 0 0 1px #557E38;}
+div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p,div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) span {color:#1E3022 !important;}
+div[data-baseweb="input"] > div,div[data-baseweb="select"] > div, [data-testid="stDateInput"] [data-baseweb="input"] > div,[data-testid="stTimeInput"] [data-baseweb="input"] > div {background:#FFFFFF !important;border:1.5px solid #A2B19A !important;min-height:52px !important;}
+div[data-baseweb="input"] input,div[data-baseweb="select"] input,div[data-baseweb="select"] [role="combobox"],div[data-baseweb="select"] [role="combobox"] *,[data-testid="stDateInput"] input,[data-testid="stTimeInput"] input,textarea {color:#22372A !important;-webkit-text-fill-color:#22372A !important;font-size:16px !important;font-weight:700 !important;}
+input::placeholder,textarea::placeholder {color:#637568 !important;-webkit-text-fill-color:#637568 !important;}
+[data-baseweb="popover"],[data-baseweb="popover"] [role="option"], [data-baseweb="popover"] [role="option"] * {background:#FFFFFF !important;color:#233529 !important;-webkit-text-fill-color:#233529 !important;}
+[data-testid="stTabs"] button,[data-testid="stTabs"] button p,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary * {color:#29412F !important;font-weight:800 !important;}
+[data-testid="stTabs"] button[aria-selected="true"],[data-testid="stTabs"] button[aria-selected="true"] p {color:#386F2B !important;}
+.stMarkdown a {color:#386F2B !important;text-decoration:underline;}
+hr {border-color:#B7BEA6 !important;}
+@media(max-width:800px){.block-container{padding:4.5rem 1rem 3rem !important;} .bt-card{min-height:0;}}
+
         </style>
     """)

@@ -10,6 +10,7 @@ from datetime import date, datetime, time, timezone   # 날짜, 날짜+시각, �
 from decimal import Decimal                      # 10진수를 정확하게 계산하는 자료형
 from zoneinfo import ZoneInfo                    # 지역 이름으로 시간대를 정하는 도구 (서머타임 자동 반영)
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -136,7 +137,13 @@ def show_float_error_chart():
 
     # 가로축: 더한 횟수, 세로축: 오차
     chart_data = pd.DataFrame({"오차": errors}, index=range(1, repeat_count + 1))
-    st.line_chart(chart_data, color="#ff5c7a")
+    plot_data = chart_data.reset_index().rename(columns={"index": "더한 횟수"})
+    chart = alt.Chart(plot_data).mark_line(color="#B15C3A", strokeWidth=3).encode(
+        x=alt.X("더한 횟수:Q", title="0.1을 더한 횟수"),
+        y=alt.Y("오차:Q", title="절대 오차"),
+        tooltip=["더한 횟수:Q", alt.Tooltip("오차:Q", format=".12g")],
+    ).properties(height=300)
+    st.altair_chart(chart, width="stretch")
     st.caption(f"0.1을 {repeat_count}번 더한 결과: {total!r} (정확한 값: {Decimal(repeat_count) / Decimal(10)})")
 
 

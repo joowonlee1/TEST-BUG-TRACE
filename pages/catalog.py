@@ -4,6 +4,7 @@
 # 검색 조건은 다른 페이지에 다녀와도 그대로 유지된다. (상태 관리)
 # =============================================================
 
+import altair as alt
 import pandas as pd               # 표 형태의 데이터를 다루는 라이브러리 (그래프용)
 import streamlit as st
 
@@ -95,7 +96,13 @@ def show_category_chart(cases):
     # index: 막대 옆에 쓸 이름(분류), 값: 막대 길이(오류 수)
     chart_data = pd.DataFrame({"오류 수": count_by_category(cases)}, index=CATEGORIES)
     # horizontal=True: 막대를 가로로 눕혀서 분류 이름을 똑바로 읽을 수 있게 한다.
-    st.bar_chart(chart_data, color="#B7E66B", horizontal=True)
+    plot_data = chart_data.reset_index().rename(columns={"index": "분류"})
+    chart = alt.Chart(plot_data).mark_bar(color="#51743C", cornerRadiusEnd=5).encode(
+        x=alt.X("오류 수:Q", title="오류 수", axis=alt.Axis(tickMinStep=1)),
+        y=alt.Y("분류:N", title=None, sort=CATEGORIES),
+        tooltip=["분류:N", "오류 수:Q"],
+    ).properties(height=285)
+    st.altair_chart(chart, width="stretch")
 
 
 # ----- 실제 실행 순서 -----
