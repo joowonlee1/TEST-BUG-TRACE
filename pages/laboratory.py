@@ -10,11 +10,20 @@ from datetime import date, datetime, time, timezone   # 날짜, 날짜+시각, �
 from decimal import Decimal                      # 10진수를 정확하게 계산하는 자료형
 from zoneinfo import ZoneInfo                    # 지역 이름으로 시간대를 정하는 도구 (서머타임 자동 반영)
 
-import altair as alt                             # 그래프를 그리는 라이브러리
-import pandas as pd                              # 표 형태의 데이터를 다루는 라이브러리
+from html import escape                          # 글자 속 <, > 같은 기호를 안전하게 바꿔 주는 함수
+
+import pandas as pd                              # 표 형태의 데이터를 다루는 라이브러리 (유니코드 표)
 import streamlit as st
 
-from common import crt_frame, open_case, page_banner
+from common import crt_frame, open_case, page_banner, render_html
+
+# 결과 상자 종류: 종류 이름 → (상자 색 이름, 앞에 붙는 제목)
+RESULT_STYLES = {
+    "diff": ("bt-err", "🔎 RESULT · 오류 현상이 재현됐어요"),   # 컴퓨터가 예상과 다르게 동작함 (실험 성공!)
+    "same": ("bt-ok", "✅ RESULT · 결과가 같아요"),              # 이번 값에서는 차이가 없음
+    "note": ("bt-key", "💡 NOTE · 핵심"),                        # 정리 문장
+    "input": ("bt-obs", "⌨️ INPUT · 입력을 확인해 주세요"),       # 입력이 비었거나 잘못됨
+}
 
 # 실험 목록: "실험 이름표": ("화면에 보일 이름", 관련 오류 번호)
 LABS = {
@@ -72,6 +81,17 @@ def show_case_link(lab):
         open_case(case_id)
 
 
+def result_box(kind, text):
+    """실험 결과를 앱 디자인에 맞는 상자로 보여 준다. (빨간 '오류' 경고창처럼 보이지 않게)"""
+    box_class, label = RESULT_STYLES[kind]
+    render_html(f"""
+        <div class="bt-box {box_class}">
+            <div class="bt-box-label">{label}</div>
+            <div>{escape(text)}</div>
+        </div>
+    """)
+
+
 def to_hex(data):
     """바이트를 사람이 읽기 쉬운 16진수 문자열로 바꾼다. 예) b'\\xed\\x95\\x9c' → 'ED 95 9C'"""
     return " ".join(f"{byte:02X}" for byte in data)
@@ -106,7 +126,7 @@ def show_float_result(first_text, second_text):
         computer_result = first_number + second_number                # 컴퓨터 방식(2진수) 계산
         exact_result = Decimal(first_text) + Decimal(second_text)     # 10진수로 정확히 계산
     except (ValueError, ArithmeticError):
-        st.error("계산할 수 있는 숫자를 입력해 주세요. 예) 0.1")
+        result_box("input", "계산할 수 있는 숫자를 입력해 주세요. 예) 0.1")
         return
 
     # !r (repr): 숫자를 줄이지 않고 컴퓨터가 가진 값 그대로 보여 준다.
@@ -115,9 +135,9 @@ def show_float_result(first_text, second_text):
 
     # 두 결과가 같은지 비교
     if computer_result == float(exact_result):
-        st.success("이번에는 두 결과가 같아요. 2진수로 딱 떨어지거나 오차가 반올림으로 사라진 경우예요.")
+        result_box("same", "이번에는 두 결과가 같아요. 2진수로 딱 떨어지거나 오차가 반올림으로 사라진 경우예요.")
     else:
-        st.error(f"두 결과가 달라요! 컴퓨터 계산 결과({computer_result!r})는 정확한 값({exact_result})과 다른 수예요.")
+        result_box("diff", f"두 결과가 달라요! 컴퓨터 계산 결과({computer_result!r})는 정확한 값({exact_result})과 다른 수예요.")
 
     # Decimal(float값): 컴퓨터 안에 '실제로' 저장된 값을 끝까지 보여 준다.
     st.markdown("**컴퓨터 안에 실제로 저장된 값**")
@@ -138,22 +158,43 @@ def show_float_error_chart():
         error = abs(Decimal(total) - exact)            # 둘의 차이 = 오차
         errors.append(float(error))
 
-    # 가로축: 더한 횟수, 세로축: 오차
-    chart_data = pd.DataFrame({"오차": errors}, index=range(1, repeat_count + 1))
-    plot_data = chart_data.reset_index().rename(columns={"index": "더한 횟수"})
-    # Altair 꺾은선 그래프(mark_line): 더한 횟수가 늘수록 오차가 어떻게 변하는지 보여 준다.
-    chart = alt.Chart(plot_data).mark_line(color="#A23A2E", strokeWidth=3).encode(
-        x=alt.X("더한 횟수:Q", title="0.1을 더한 횟수"),
-        y=alt.Y("오차:Q", title="절대 오차"),
-        tooltip=["더한 횟수:Q", alt.Tooltip("오차:Q", format=".12g")],
-    ).properties(height=230)
-    # 배경을 투명하게, 축 글자는 진한 초록으로 → 모니터 화면과 어울리게
-    chart = chart.configure(background="transparent").configure_axis(
-        labelColor="#1E3322", titleColor="#1F4D25", gridColor="#C9D9A6", domainColor="#1F4D25",
-    )
-    # use_container_width=True: 그래프를 화면 너비에 맞춘다. (Streamlit 1.50에서 쓰는 방법)
-    st.altair_chart(chart, use_container_width=True)
+    draw_line_chart(errors)
     st.caption(f"0.1을 {repeat_count}번 더한 결과: {total!r} (정확한 값: {Decimal(repeat_count) / Decimal(10)})")
+
+
+def draw_line_chart(values):
+    """값 목록을 꺾은선 그래프(SVG 그림)로 직접 그린다. 가로축 = 더한 횟수, 세로축 = 오차"""
+    width, height, margin = 600, 240, 30          # 그림 크기와 안쪽 여백(px)
+    largest = max(values) or 1                    # 가장 큰 오차 (0이면 나눗셈을 못 하니 1로)
+    last_index = len(values) - 1
+
+    # 각 값을 그림 위의 (x, y) 좌표로 바꾼다.
+    #   x: 왼쪽 여백에서 시작해 오른쪽 끝까지 고르게 나눈다.
+    #   y: 값이 클수록 위로 (SVG는 위쪽이 0이라서 높이에서 빼 준다).
+    points = []
+    for index, value in enumerate(values):
+        x = margin + index / last_index * (width - 2 * margin)
+        y = height - margin - value / largest * (height - 2 * margin)
+        points.append(f"{x:.1f},{y:.1f}")
+
+    # 가로 눈금선 4개 (0%, 33%, 66%, 100% 높이)
+    grid = ""
+    for step in range(4):
+        y = margin + step * (height - 2 * margin) / 3
+        grid += f'<line x1="{margin}" y1="{y:.1f}" x2="{width - margin}" y2="{y:.1f}" stroke="#C9D9A6" stroke-width="1"/>'
+
+    # polyline: 점들을 순서대로 이은 꺾은선
+    render_html(f"""
+        <svg class="lab-chart" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+            {grid}
+            <line x1="{margin}" y1="{height - margin}" x2="{width - margin}" y2="{height - margin}" stroke="#1F4D25" stroke-width="3"/>
+            <line x1="{margin}" y1="{margin}" x2="{margin}" y2="{height - margin}" stroke="#1F4D25" stroke-width="3"/>
+            <polyline points="{' '.join(points)}" fill="none" stroke="#A23A2E" stroke-width="3" stroke-linejoin="bevel"/>
+            <text x="{margin + 4}" y="{margin - 8}" font-size="13" fill="#1F4D25">최대 오차 {largest:.1e}</text>
+            <text x="{margin}" y="{height - 8}" font-size="13" fill="#1F4D25">1번</text>
+            <text x="{width - margin}" y="{height - 8}" font-size="13" fill="#1F4D25" text-anchor="end">{len(values)}번 더함</text>
+        </svg>
+    """)
 
 
 # -------------------------------------------------------------
@@ -183,7 +224,7 @@ def run_sort_lab():
         # 쉼표로 나누고, 앞뒤 공백을 지우고, 빈 항목은 뺀다.
         items = [item.strip() for item in input_text.split(",") if item.strip()]
         if not items:
-            st.error("정렬할 항목을 입력해 주세요.")
+            result_box("input", "정렬할 항목을 입력해 주세요.")
             return
 
         text_sorted = sorted(items)                       # 글자(사전식) 정렬
@@ -201,9 +242,9 @@ def run_sort_lab():
             st.code("\n".join(natural_sorted))
 
         if text_sorted != natural_sorted:
-            st.error("두 결과가 달라요! 글자 정렬은 첫 글자부터 하나씩 비교하기 때문이에요.")
+            result_box("diff", "두 결과가 달라요! 글자 정렬은 첫 글자부터 하나씩 비교하기 때문이에요.")
         else:
-            st.success("이번에는 두 결과가 같아요. 자릿수가 다른 숫자를 섞어 보세요.")
+            result_box("same", "이번에는 두 결과가 같아요. 자릿수가 다른 숫자를 섞어 보세요.")
 
 
 # -------------------------------------------------------------
@@ -226,7 +267,7 @@ def run_unicode_lab():
 
     if run_button("unicode_run"):
         if not input_text:
-            st.error("글자를 입력해 주세요.")
+            result_box("input", "글자를 입력해 주세요.")
             return
 
         nfc_text = unicodedata.normalize("NFC", input_text)   # 완성형: '한' = 1개
@@ -242,9 +283,9 @@ def run_unicode_lab():
 
         # == 로 비교하면 컴퓨터가 두 글자를 같은 글자로 보는지 알 수 있다.
         if nfc_text == nfd_text:
-            st.success("두 방식의 결과가 같아요. 한글이 아닌 글자는 쪼개지지 않을 수 있어요.")
+            result_box("same", "두 방식의 결과가 같아요. 한글이 아닌 글자는 쪼개지지 않을 수 있어요.")
         else:
-            st.error(f"화면에는 똑같이 '{input_text}'로 보이지만, 컴퓨터는 두 글자를 다른 글자로 판단해요. (NFC == NFD → False)")
+            result_box("diff", f"화면에는 똑같이 '{input_text}'로 보이지만, 컴퓨터는 두 글자를 다른 글자로 판단해요. (NFC == NFD → False)")
 
 
 # -------------------------------------------------------------
@@ -258,7 +299,7 @@ def run_encoding_lab():
 
     if run_button("encoding_run"):
         if not input_text:
-            st.error("글자를 입력해 주세요.")
+            result_box("input", "글자를 입력해 주세요.")
             return
 
         # encode(): 글자 → 바이트(숫자). errors="replace"는 바꿀 수 없는 글자를 ?로 바꾼다.
@@ -277,7 +318,7 @@ def run_encoding_lab():
 
         st.markdown("**③ 같은 규칙으로 읽으면?**")
         st.code(f"UTF-8로 저장 → UTF-8로 읽기   : {utf8_bytes.decode('utf-8')}")
-        st.info("저장할 때와 읽을 때 같은 규칙(인코딩)을 써야 글자가 제대로 보여요.")
+        result_box("note", "저장할 때와 읽을 때 같은 규칙(인코딩)을 써야 글자가 제대로 보여요.")
 
 
 # -------------------------------------------------------------
@@ -306,9 +347,9 @@ def run_timezone_lab():
 
         # .date(): 시각을 버리고 날짜만 비교한다.
         if utc_moment.date() != korea_moment.date():
-            st.error("UTC 기준으로는 날짜가 하루 전이에요! 날짜만 잘라서 보여 주면 하루 차이가 나요.")
+            result_box("diff", "UTC 기준으로는 날짜가 하루 전이에요! 날짜만 잘라서 보여 주면 하루 차이가 나요.")
         else:
-            st.success("이 시각은 UTC로 바꿔도 날짜가 같아요. 한국 시간 오전 0시~9시 사이로 바꿔 보세요.")
+            result_box("same", "이 시각은 UTC로 바꿔도 날짜가 같아요. 한국 시간 오전 0시~9시 사이로 바꿔 보세요.")
 
         # 뉴욕은 서머타임 때문에 계절마다 시간 차이가 달라진다.
         new_york_offset = new_york_moment.utcoffset().total_seconds() / 3600   # 초 → 시간

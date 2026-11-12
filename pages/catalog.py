@@ -1,18 +1,12 @@
 # =============================================================
 # pages/catalog.py  (오류 도감)
-# 전체 오류 목록을 검색어와 분류로 걸러서 카드로 보여 주고,
-# 아래쪽에 오류 로그와 그래프 2개(분류별, 원인 유형별)를 보여 준다.
+# 전체 오류 목록을 검색어와 분류로 걸러서 카드로 보여 준다.
 # 검색 조건은 다른 페이지에 다녀와도 그대로 유지된다. (상태 관리)
 # =============================================================
 
-from html import escape           # 글자 속 <, > 같은 기호를 안전하게 바꿔 주는 함수
-
 import streamlit as st
 
-from common import (
-    CATEGORIES, CATEGORY_ICONS, CAUSE_TYPES,
-    case_card, count_values, crt_frame, load_cases, open_case, page_banner, render_html, search_cases, terminal_log,
-)
+from common import CATEGORIES, CATEGORY_ICONS, case_card, crt_frame, load_cases, open_case, page_banner, search_cases
 
 CARDS_PER_ROW = 4                 # 한 줄에 보여 줄 카드 수 (한 화면에 많이 보이도록 4개)
 
@@ -87,48 +81,6 @@ def show_case_cards(results):
                         open_case(case["id"])
 
 
-# -------------------------------------------------------------
-# 3. 아래쪽: 오류 로그 + 그래프 2개
-# -------------------------------------------------------------
-
-def show_error_log(results, total_count):
-    """현재 검색 상태를 터미널 로그처럼 보여 준다."""
-    keyword = st.session_state["catalog_keyword"].strip() or "(없음)"
-    terminal_log([
-        ("INFO", f"{total_count} CASES LOADED"),
-        ("INFO", f"분류 = {st.session_state['catalog_category']}"),
-        ("INFO", f"검색어 = {keyword}"),
-        ("ANALYZE", f"결과 {len(results)}건 / 전체 {total_count}건"),
-    ])
-
-
-def pixel_bar_chart(title, names, counts):
-    """이름 목록과 개수 목록으로 '픽셀 막대그래프'를 HTML로 그린다. (데이터 시각화)"""
-    largest = max(counts)                     # 가장 큰 값 → 이 막대가 100% 길이가 된다
-    rows = ""
-    # zip(): 이름과 개수를 하나씩 짝지어 반복한다.
-    for name, count in zip(names, counts):
-        percent = count / largest * 100       # 막대 길이(%) = 개수 ÷ 가장 큰 값 × 100
-        rows += f"""
-            <div class="pxbar-row">
-                <span class="pxbar-name">{escape(name)}</span>
-                <span class="pxbar-track"><span class="pxbar-fill" style="width:{percent:.0f}%"></span></span>
-                <span class="pxbar-count">{count}</span>
-            </div>
-        """
-    render_html(f'<div class="pxbar"><div class="pxbar-title">{escape(title)}</div>{rows}</div>')
-
-
-def show_charts(cases):
-    """분류별 오류 수, 원인 유형별 오류 수 그래프 2개를 나란히 보여 준다."""
-    category_column, cause_column = st.columns(2)
-    with category_column:
-        pixel_bar_chart("📊 분류별 오류 수", CATEGORIES, count_values(cases, "category", CATEGORIES))
-    with cause_column:
-        cause_names = list(CAUSE_TYPES.keys())
-        pixel_bar_chart("📊 원인 유형별 오류 수", cause_names, count_values(cases, "cause_type", cause_names))
-
-
 # ----- 실제 실행 순서 -----
 all_cases = load_cases()
 
@@ -140,10 +92,3 @@ with crt_frame("pages/catalog.py", "CATALOG"):
     # 3) 현재 검색 조건으로 오류 걸러 내기
     found_cases = search_cases(all_cases, st.session_state["catalog_keyword"], st.session_state["catalog_category"])
     show_case_cards(found_cases)         # 4) 결과 카드
-
-    # 5) 아래쪽: 왼쪽 오류 로그 / 오른쪽 그래프 2개
-    log_column, chart_column = st.columns([1, 2])
-    with log_column:
-        show_error_log(found_cases, len(all_cases))
-    with chart_column:
-        show_charts(all_cases)

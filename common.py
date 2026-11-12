@@ -135,18 +135,6 @@ def search_cases(cases, keyword, category):
     return results
 
 
-def count_values(cases, field, names):
-    """오류 목록에서 field(예: "category") 값이 names의 각 이름과 같은 개수를 센다."""
-    counts = []
-    for name in names:
-        count = 0
-        for case in cases:
-            if case[field] == name:
-                count += 1
-        counts.append(count)
-    return counts
-
-
 # -------------------------------------------------------------
 # 3. 페이지 이동 함수
 # -------------------------------------------------------------
@@ -179,15 +167,40 @@ def icon(name):
     return f'<span class="bt-icon">{escape(name)}</span>'
 
 
+def toggle_window(state_name):
+    """창 상태(최소화 'win_min' / 최대화 'win_max')를 켜고 끈다. True ↔ False"""
+    # .get(이름, False): 저장된 값이 없으면 False(꺼짐)로 본다. not → 반대로 바꾼다.
+    st.session_state[state_name] = not st.session_state.get(state_name, False)
+
+
+def show_window_buttons():
+    """창 버튼 3개(— □ ×)를 진짜로 동작하게 만든다."""
+    is_max = st.session_state.get("win_max", False)
+    # horizontal=True: 버튼 3개를 가로로 나란히 놓는다.
+    with st.container(key="win_btns", horizontal=True):
+        # — 최소화: 화면 내용을 접는다 / 다시 누르면 펼친다
+        st.button("—", key="win_min_btn", help="최소화 (내용 접기)", on_click=toggle_window, args=("win_min",))
+        # □ 최대화: 모니터 틀을 빼고 화면을 꽉 채운다 / 최대화 중에는 ❐(원래대로) 모양
+        st.button("❐" if is_max else "□", key="win_max_btn", help="최대화 / 원래 크기", on_click=toggle_window, args=("win_max",))
+        # × 닫기: 프로그램을 닫듯이 첫 화면으로 돌아간다
+        if st.button("×", key="win_close_btn", help="닫고 첫 화면으로"):
+            st.session_state["win_min"] = False
+            st.switch_page("pages/home.py")
+
+
 def show_window_bar(english_name):
     """모니터 화면 맨 위 '창 제목 줄': 픽셀 컴퓨터 + BUG TRACE + 현재 위치 + 창 버튼(— □ ×)"""
-    render_html(f"""
-        <div class="win-bar">
-            <div class="win-logo">{PIXEL_COMPUTER_SVG}<span class="win-title">BUG TRACE</span></div>
-            <div class="win-path">C:\\BUG_TRACE\\{escape(english_name)}&gt;<span class="win-cursor"></span></div>
-            <div class="win-btns"><span>—</span><span>□</span><span>×</span></div>
-        </div>
-    """)
+    # 왼쪽 넓은 칸: 로고와 경로(HTML) / 오른쪽 좁은 칸: 진짜 창 버튼(Streamlit 버튼)
+    title_column, button_column = st.columns([6, 1], vertical_alignment="center")
+    with title_column:
+        render_html(f"""
+            <div class="win-bar">
+                <div class="win-logo">{PIXEL_COMPUTER_SVG}<span class="win-title">BUG TRACE</span></div>
+                <div class="win-path">C:\\BUG_TRACE\\{escape(english_name)}&gt;<span class="win-cursor"></span></div>
+            </div>
+        """)
+    with button_column:
+        show_window_buttons()
 
 
 def show_nav(current_page):
@@ -203,31 +216,47 @@ def show_nav(current_page):
 
 
 def show_monitor_panel():
-    """모니터 아래쪽 장식: 스피커 구멍, 불빛, 플로피 디스크 입구, 전원 버튼"""
-    render_html(f"""
-        <div class="px-panel">
-            <div class="px-screw"></div>
-            <div class="px-grill"></div>
-            <div class="px-leds"><span class="px-led-on"></span><span class="px-led-dim"></span></div>
-            <div class="px-floppy"></div>
-            <div class="px-grill"></div>
-            <div class="px-power">{icon("power_settings_new")}</div>
-            <div class="px-screw"></div>
-        </div>
-    """)
+    """모니터 아래쪽: 스피커 구멍, 깜빡이는 불빛, 플로피 디스크 입구 + 진짜 전원 버튼"""
+    # 왼쪽 넓은 칸: 장식(HTML) / 오른쪽 좁은 칸: 누를 수 있는 전원 버튼(Streamlit 버튼)
+    decor_column, power_column = st.columns([12, 1], vertical_alignment="center")
+    with decor_column:
+        render_html("""
+            <div class="px-panel">
+                <div class="px-screw"></div>
+                <div class="px-grill"></div>
+                <div class="px-leds"><span class="px-led-on"></span><span class="px-led-dim"></span></div>
+                <div class="px-floppy"></div>
+                <div class="px-grill"></div>
+            </div>
+        """)
+    with power_column:
+        with st.container(key="power"):
+            # 전원 버튼: 컴퓨터를 껐다 켜듯이 첫 화면으로 돌아간다
+            if st.button("", key="power_btn", icon=":material/power_settings_new:", help="전원: 첫 화면으로"):
+                st.session_state["win_min"] = False
+                st.session_state["win_max"] = False
+                st.switch_page("pages/home.py")
 
 
 # @contextmanager: 이 함수를 "with crt_frame(...):" 형태로 쓸 수 있게 만든다.
 # with 블록 안에 쓴 코드(각 페이지의 내용)는 yield 자리에서 실행된다.
 @contextmanager
 def crt_frame(current_page, english_name):
-    """레트로 CRT 모니터를 그리고, 그 화면 안에 페이지 내용을 담는다."""
-    with st.container(key="crt"):                 # 모니터 바깥 틀 (베이지 플라스틱)
-        with st.container(key="crt_screen"):      # 모니터 화면 (연두빛 형광 화면)
-            show_window_bar(english_name)        # 1) 창 제목 줄
-            show_nav(current_page)               # 2) 메뉴 버튼
-            yield                                # 3) ← 여기에 각 페이지의 내용이 들어간다
-        show_monitor_panel()                     # 4) 모니터 아래쪽 장식
+    """레트로 CRT 모니터를 그리고, 그 화면 안에 페이지 내용을 담는다. 창 버튼(— □ ×) 상태도 반영한다."""
+    is_min = st.session_state.get("win_min", False)    # 최소화 중인가?
+    is_max = st.session_state.get("win_max", False)    # 최대화 중인가?
+    # 최대화 중이면 바깥 틀 이름을 "crt_max"로 바꿔서 CSS로 틀을 얇게, 아래 패널은 숨긴다.
+    with st.container(key="crt_max" if is_max else "crt"):     # 모니터 바깥 틀 (베이지 플라스틱)
+        with st.container(key="crt_screen"):                    # 모니터 화면 (연두빛 형광 화면)
+            show_window_bar(english_name)                      # 1) 창 제목 줄 (+ 진짜 창 버튼)
+            if is_min:
+                render_html('<div class="win-min-note">▁ 창이 최소화되어 있어요. 오른쪽 위 <b>—</b> 버튼을 다시 누르면 펼쳐져요.</div>')
+            # 최소화 중이면 내용 상자 이름을 "win_hidden"으로 바꿔서 CSS로 숨긴다. (코드는 그대로 실행됨)
+            with st.container(key="win_hidden" if is_min else "win_body"):
+                show_nav(current_page)                         # 2) 메뉴 버튼
+                yield                                          # 3) ← 여기에 각 페이지의 내용이 들어간다
+        if not is_max:
+            show_monitor_panel()                               # 4) 모니터 아래쪽 (최대화 중에는 숨김)
 
 
 def page_banner(icon_name, english, korean, description):
@@ -237,20 +266,6 @@ def page_banner(icon_name, english, korean, description):
         <div class="bt-banner">
             <div class="bt-banner-main">{icon(icon_name)}<span class="bt-banner-en">{escape(english)}</span><span class="bt-banner-ko">{escape(korean)}</span></div>
             <div class="bt-banner-desc">{escape(description)}</div>
-        </div>
-    """)
-
-
-def terminal_log(lines):
-    """어두운 초록 '터미널' 상자에 로그 줄들을 보여 준다. lines = [(종류, 내용), ...]"""
-    # 종류(INFO, WARN 등)마다 색이 다른 이름표를 붙인다.
-    rows = ""
-    for level, text in lines:
-        rows += f'<div><span class="log-{level.lower()}">[{escape(level)}]</span> {escape(text)}</div>'
-    render_html(f"""
-        <div class="bt-term">
-            <div class="bt-term-bar"><span></span><span></span><span></span> ERROR_LOG</div>
-            <div class="bt-term-body">&gt; ERROR_LOG...{rows}<div>&gt; <span class="win-cursor"></span></div></div>
         </div>
     """)
 
@@ -310,7 +325,9 @@ def apply_style():
             font-family: 'Noto Sans KR', sans-serif; font-size: 0.97rem; line-height: 1.65; color: var(--text);
         }
         [data-testid="stCaptionContainer"] p { color: var(--dim); font-size: 0.88rem; }
-        h1, h2, h3, h4 { font-family: 'Galmuri11', 'Noto Sans KR', sans-serif !important; font-weight: 700 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; }
+        /* 글꼴 나누기: 픽셀 글꼴(Galmuri)은 버튼·배너·이름표 같은 '짧은 글자'에만 쓰고,
+           제목·설명처럼 읽어야 하는 글은 본문 글꼴(Noto Sans KR)로 → 레트로 느낌은 살리고 읽기는 편하게 */
+        h1, h2, h3, h4 { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; letter-spacing: -0.3px; }
         h2 { font-size: 1.45rem !important; } h3 { font-size: 1.15rem !important; }
         code, pre { font-family: 'Nanum Gothic Coding', monospace !important; }
         .bt-icon {
@@ -346,12 +363,17 @@ def apply_style():
         .win-title { font-family: 'Press Start 2P', monospace; font-size: 1.55rem; color: var(--ink); letter-spacing: 1px; }
         .win-path { flex: 1; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); font-size: 0.95rem; text-align: right; }
         .win-cursor { display: inline-block; width: 9px; height: 1em; margin-left: 4px; background: var(--ink); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
-        .win-btns { display: flex; gap: 6px; }
-        .win-btns span {
-            width: 30px; height: 28px; display: flex; align-items: center; justify-content: center;
-            background: var(--paper); color: var(--ink); font-weight: 800; font-size: 1rem; margin: 3px;
-            box-shadow: 0 -3px 0 0 var(--ink), 0 3px 0 0 var(--ink), -3px 0 0 0 var(--ink), 3px 0 0 0 var(--ink);
-        }
+        /* 진짜 창 버튼(— □ ×): 작은 정사각형 픽셀 버튼, 오른쪽 끝에 붙인다 */
+        .st-key-win_btns { justify-content: flex-end; gap: 4px; }
+        .st-key-win_btns div.stButton { padding-top: 0; }
+        .st-key-win_btns div.stButton button { min-height: 34px; width: 40px; min-width: 40px; padding: 0; margin: 4px; }
+        .st-key-win_btns div.stButton button p { font-family: 'Noto Sans KR', sans-serif !important; font-size: 1.1rem !important; font-weight: 900 !important; }
+        .st-key-win_btns div.stButton button:hover { background: var(--lime); }
+        /* 최소화: 내용 상자를 숨기고 안내 한 줄만 보여 준다 */
+        .st-key-win_hidden { display: none !important; }
+        .win-min-note { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); background: var(--paper); border: 3px dashed var(--ink); padding: 10px 14px; }
+        /* 최대화: 베이지 틀을 얇게 줄여서 화면이 브라우저를 꽉 채운다 */
+        .st-key-crt_max { background: #D9CCAE; border: 3px solid #B9A884; border-radius: 16px; padding: 6px; gap: 0; }
         @keyframes blink { 50% { opacity: 0; } }
 
         /* 모니터 아래쪽: 스피커, 불빛, 플로피 디스크, 전원 버튼 */
@@ -360,35 +382,41 @@ def apply_style():
         .px-grill { width: 15vw; max-width: 240px; height: 38px; background: repeating-linear-gradient(0deg, #7E735C 0 4px, transparent 4px 9px); border-radius: 3px; }
         .px-leds { display: flex; gap: 14px; }
         .px-leds span { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #6C6450; }
-        .px-led-on { background: #6BD43C; box-shadow: 0 0 10px #6BD43C; }
+        /* 초록 불빛: 컴퓨터가 일하는 것처럼 불규칙하게 깜빡인다 */
+        .px-led-on { background: #6BD43C; box-shadow: 0 0 10px #6BD43C; animation: led 2.4s steps(1) infinite; }
+        @keyframes led { 0%, 30%, 55%, 100% { opacity: 1; } 25%, 50%, 70% { opacity: .35; } }
         .px-led-dim { background: #A39324; }
         /* 플로피 디스크 입구: 틀 + 검은 틈 + 꺼내는 버튼 */
         .px-floppy { width: 22vw; max-width: 360px; height: 58px; border: 3px solid #A99B7E; border-radius: 5px; background: linear-gradient(180deg, #F3EAD5, #E2D5B8); position: relative; box-shadow: inset 0 2px 0 #FFF8E8; }
         .px-floppy::before { content: ""; position: absolute; left: 7%; right: 26%; top: 22px; height: 10px; background: #2F2B22; border-radius: 2px; }
         .px-floppy::after { content: ""; position: absolute; right: 6%; top: 17px; width: 15%; height: 20px; background: #F7F0DE; border: 3px solid #A99B7E; border-radius: 3px; }
-        /* 라임색 전원 버튼 (아래쪽 그림자로 눌리는 버튼처럼) */
-        .px-power { width: 76px; height: 56px; background: var(--lime); border: 4px solid var(--ink); display: flex; align-items: center; justify-content: center; color: var(--ink); box-shadow: 0 5px 0 #6E8F2C; }
-        .px-power .bt-icon { font-size: 2rem; }
+        /* 진짜 전원 버튼 (라임색, 누르면 첫 화면으로) */
+        .st-key-power { padding-top: clamp(14px, 1.8vw, 28px); }   /* 화면 테두리와 겹치지 않게 아래로 */
+        .st-key-power div.stButton { padding-top: 0; }
+        .st-key-power div.stButton button { background: var(--lime); min-height: 56px; width: 76px; min-width: 76px; padding: 0; }
+        .st-key-power div.stButton button [data-testid="stIconMaterial"] { font-size: 2rem !important; margin-right: 0; }
+        .st-key-power div.stButton button:hover { background: #D7F57E; }
 
         /* ===== 6) 픽셀 테두리 (모서리가 한 칸 비는 도트 느낌)
            테두리(border) 대신 위·아래·왼쪽·오른쪽 그림자 4개를 붙인다. 그림자끼리 모서리에서 만나지 않아 계단처럼 보인다. ===== */
-        /* 두꺼운 픽셀 버튼: 진한 초록 그림자 4개(테두리) + 안쪽 아래 그림자(입체감) + 바깥 아래 그림자(바닥에 놓인 느낌) */
-        div.stButton > button, div[data-testid="stPageLink"] a {
+        /* 두꺼운 픽셀 버튼: 진한 초록 그림자 4개(테두리) + 안쪽 아래 그림자(입체감) + 바깥 아래 그림자(바닥에 놓인 느낌)
+           "div.stButton button"(띄어쓰기) = 버튼이 상자 안 몇 겹 아래에 있어도 적용된다. (설명 말풍선이 있는 버튼도 포함) */
+        div.stButton button, div[data-testid="stPageLink"] a {
             border: none !important; border-radius: 0; margin: 5px 5px 10px; min-height: 48px; padding: 6px 14px;
             background: var(--paper); transition: background-color .12s ease, transform .08s ease;
             box-shadow: 0 -5px 0 0 var(--ink), 0 5px 0 0 var(--ink), -5px 0 0 0 var(--ink), 5px 0 0 0 var(--ink),
                         inset 0 -5px 0 0 rgba(31, 77, 37, .14), 0 10px 0 0 rgba(31, 77, 37, .28) !important;
         }
-        div.stButton > button:active, div[data-testid="stPageLink"] a:active { transform: translateY(3px); }   /* 누르면 살짝 내려간다 */
-        div.stButton > button p, div[data-testid="stPageLink"] a p {
+        div.stButton button:active, div[data-testid="stPageLink"] a:active { transform: translateY(3px); }   /* 누르면 살짝 내려간다 */
+        div.stButton button p, div[data-testid="stPageLink"] a p {
             font-family: 'Galmuri11', 'Noto Sans KR', sans-serif !important; font-size: 1.05rem !important;
             font-weight: 700 !important; color: var(--ink) !important;
         }
-        div.stButton > button [data-testid="stIconMaterial"], div[data-testid="stPageLink"] a [data-testid="stIconMaterial"] { color: var(--ink) !important; font-weight: 700; margin-right: 8px; }   /* margin-right: 아이콘과 글자 사이 간격 */
-        div.stButton > button:hover, div[data-testid="stPageLink"] a:hover { background: var(--lime-soft); }
-        div.stButton > button[kind="primary"] { background: var(--lime); }
+        div.stButton button [data-testid="stIconMaterial"], div[data-testid="stPageLink"] a [data-testid="stIconMaterial"] { color: var(--ink) !important; font-weight: 700; margin-right: 8px; }   /* margin-right: 아이콘과 글자 사이 간격 */
+        div.stButton button:hover, div[data-testid="stPageLink"] a:hover { background: var(--lime-soft); }
+        div.stButton button[kind="primary"] { background: var(--lime); }
         div.stButton { padding-top: 8px; }   /* 버튼 위쪽 여백: 바로 위 글 상자와 픽셀 테두리가 겹치지 않게 */
-        div.stButton > button[kind="primary"]:hover { background: #D7F57E; }
+        div.stButton button[kind="primary"]:hover { background: #D7F57E; }
         /* 메뉴 버튼: 지금 있는 페이지는 라임색 */
         .st-key-nav_active div[data-testid="stPageLink"] a { background: var(--lime) !important; }
         div[data-testid="stPageLink"] a { justify-content: center; }
@@ -418,9 +446,11 @@ def apply_style():
         /* ===== 9) 테두리 상자, 입력창, 선택 상자, 탭 ===== */
         div[data-testid="stVerticalBlockBorderWrapper"] { background: var(--paper); border-radius: 0; border: 3px solid var(--ink); padding: 10px 12px; }
         div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 44px; border-radius: 0; background-color: #FFFFFF; border: 3px solid var(--ink); }
-        [data-testid="stWidgetLabel"] p { font-family: 'Galmuri11', sans-serif !important; font-weight: 700 !important; color: var(--ink) !important; }
+        [data-testid="stWidgetLabel"] p { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 700 !important; color: var(--ink) !important; }
         div[data-testid="stCodeBlock"], pre { border-radius: 0; }
-        [data-testid="stTabs"] button p { font-family: 'Galmuri11', sans-serif !important; font-weight: 700 !important; font-size: 1rem !important; color: var(--ink) !important; }
+        [data-testid="stTabs"] button p { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; font-size: 1rem !important; color: var(--ink) !important; }
+        /* 현상 실험실 꺾은선 그래프(SVG) */
+        .lab-chart { width: 100%; height: auto; margin-bottom: 14px; background: var(--paper); border: 3px solid var(--ink); font-family: 'Noto Sans KR', sans-serif; }
         .stMarkdown a { color: #2F6B2A; text-decoration: underline; font-weight: 600; }
         hr { border-color: var(--ink) !important; opacity: .3; margin: 0.4rem 0 !important; }
 
@@ -436,24 +466,6 @@ def apply_style():
         div[data-testid="stRadio"] > div[role="radiogroup"] > label p { font-family: 'Galmuri11', sans-serif !important; font-size: 0.98rem !important; font-weight: 700 !important; color: var(--ink) !important; }
         div[data-testid="stRadio"] > div[role="radiogroup"] > label [data-testid="stIconMaterial"] { color: var(--ink) !important; }
         div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child { width: 0; height: 0; overflow: hidden; margin: 0; padding: 0; }   /* 동그란 라디오 표시 숨기기 */
-
-        /* ===== 10) 터미널 로그 상자 ===== */
-        .bt-term { background: #163A1C; border: 3px solid var(--ink); color: #CFF5A8; height: 100%; }
-        .bt-term-bar { background: var(--ink); color: #CFF5A8; font-family: 'Galmuri11', monospace; font-size: 0.8rem; padding: 4px 8px; }
-        .bt-term-bar span { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #CFF5A8; margin-right: 4px; }
-        .bt-term-body { font-family: 'Galmuri11', monospace; font-size: 0.88rem; line-height: 1.7; padding: 8px 12px; }
-        .bt-term-body .win-cursor { background: #CFF5A8; }
-        .log-info { color: #9FE870; } .log-warn { color: #F2D46B; } .log-analyze { color: #8FD3FF; } .log-ok { color: #C6EA4E; }
-
-        /* ===== 10-1) 픽셀 막대그래프 (오류 도감 아래쪽) ===== */
-        .pxbar { background: var(--paper); border: 3px solid var(--ink); padding: 8px 12px; height: 100%; }
-        .pxbar-title { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 0.92rem; margin-bottom: 6px; }
-        .pxbar-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
-        .pxbar-name { flex: 0 0 118px; white-space: nowrap; font-family: 'Galmuri11', sans-serif; font-size: 0.85rem; color: var(--text); text-align: right; }
-        .pxbar-track { flex: 1; height: 16px; background: var(--lime-soft); border: 2px solid var(--ink); }
-        /* 막대 안쪽을 세로 줄무늬로 칠해서 도트(픽셀) 블록이 쌓인 것처럼 보이게 한다 */
-        .pxbar-fill { display: block; height: 100%; background: repeating-linear-gradient(90deg, #2F6B2A 0 10px, #4E8A35 10px 12px); }
-        .pxbar-count { flex: 0 0 18px; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); }
 
         /* ===== 11) 설명 상자 (정상 = 초록, 오류 = 벽돌, 핵심 = 황토, 관찰 = 파랑) ===== */
         .bt-box { background: var(--paper); border: 2px solid var(--ink); padding: 10px 14px; margin-bottom: 6px; color: var(--text); line-height: 1.6; font-size: 0.95rem; }
