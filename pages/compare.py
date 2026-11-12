@@ -8,7 +8,7 @@ from html import escape
 
 import streamlit as st
 
-from common import CAUSE_TYPES, case_label, find_case, load_cases, open_case, page_header, render_html
+from common import CAUSE_TYPES, case_label, crt_frame, find_case, load_cases, open_case, page_banner, render_html
 
 # 처음 들어왔을 때 비교할 두 오류 (같은 '상태 불일치' 유형인 CASE 01과 CASE 06)
 DEFAULT_LEFT_ID = 1
@@ -51,9 +51,9 @@ def show_selectors(cases):
 
     left_column, right_column = st.columns(2)
     with left_column:
-        st.selectbox("비교할 사례 A", case_ids, key="compare_left", format_func=label, on_change=save_choices)
+        st.selectbox("사례 A", case_ids, key="compare_left", format_func=label, on_change=save_choices)
     with right_column:
-        st.selectbox("비교할 사례 B", case_ids, key="compare_right", format_func=label, on_change=save_choices)
+        st.selectbox("사례 B", case_ids, key="compare_right", format_func=label, on_change=save_choices)
 
 
 # -------------------------------------------------------------
@@ -69,17 +69,15 @@ def show_case_column(case, side):
             <span class="bt-badge">{escape(case['cause_type'])}</span>
         </div>
     """)
-    st.markdown(f"### {case['title']}")
-    st.caption(case["tech"])
-    st.markdown(f"**증상**  \n{case['symptom']}")           # 줄 끝 공백 2칸 + \n = 줄 바꿈
+    # 전문용어 제목, 쉬운 이름, 증상, 핵심 원리를 한 번에 그린다.
     render_html(f"""
-        <div class="bt-box bt-key">
-            <div class="bt-box-label">💡 KEY POINT · 핵심 원리</div>
-            <div>{escape(case['key_point'])}</div>
-        </div>
+        <h3>{escape(case['title'])}</h3>
+        <div class="bt-card-nick">“{escape(case["nickname"])}” · {escape(case['tech'])}</div>
+        <div class="bt-box"><div class="bt-box-label">SYMPTOM · 증상</div>{escape(case['symptom'])}</div>
+        <div class="bt-box bt-key"><div class="bt-box-label">💡 KEY POINT · 핵심 원리</div>{escape(case['key_point'])}</div>
     """)
     # side: 버튼 이름이 겹치지 않도록 "left" 또는 "right"를 붙인다.
-    if st.button("원인 추적하기 →", key=f"compare_open_{side}", width="stretch"):
+    if st.button("원인 추적 ▶", key=f"compare_open_{side}", width="stretch"):
         open_case(case["id"])
 
 
@@ -141,8 +139,6 @@ def compare_cases(left_case, right_case):
 
 def show_analysis(left_case, right_case):
     """공통점과 차이점을 탭으로 나누어 체크 목록으로 보여 준다."""
-    st.markdown("### 🧬 비교 분석")
-
     # 같은 오류를 두 번 고른 경우
     if left_case["id"] == right_case["id"]:
         st.warning("같은 오류를 골랐어요. 서로 다른 두 오류를 골라 보세요.")
@@ -180,35 +176,38 @@ def show_cause_groups(cases):
     st.caption("겉으로는 전혀 달라 보여도 원인이 같은 오류들이에요. 버튼을 누르면 바로 비교해요.")
 
     groups = group_by_cause(cases)
-    columns = st.columns(2)
-    # enumerate로 순서(0, 1, 2...)를 받아서 왼쪽·오른쪽 칸에 번갈아 넣는다.
+    columns = st.columns(3)
+    # enumerate로 순서(0, 1, 2...)를 받아서 세 칸에 차례로 넣는다.
     for order, (cause, group_cases) in enumerate(groups.items()):
-        with columns[order % 2]:                # 0, 2, 4번째는 왼쪽 / 1, 3, 5번째는 오른쪽
+        with columns[order % 3]:                # 0,3번째는 첫째 칸 / 1,4번째는 둘째 칸 / 2,5번째는 셋째 칸
             with st.container(border=True):
-                st.markdown(f"**{cause}**")
-                st.caption(CAUSE_TYPES[cause])
-                for case in group_cases:
-                    st.markdown(f"- {case_label(case)}")
+                # 원인 유형 이름 + 설명 + 해당 오류 목록을 한 번에 그린다.
+                case_lines = "".join(f"<div>· {escape(case_label(case))}</div>" for case in group_cases)
+                render_html(f"""
+                    <div class="bt-box-label" style="color:var(--ink)">{escape(cause)}</div>
+                    <div style="font-size:0.85rem;color:var(--dim)">{escape(CAUSE_TYPES[cause])}</div>
+                    <div style="font-size:0.88rem;margin-top:4px">{case_lines}</div>
+                """)
                 # 오류가 2개 이상인 유형만 비교 버튼을 보여 준다.
                 if len(group_cases) >= 2:
                     st.button(
-                        "이 두 오류 비교하기",
+                        "이 두 오류 비교",
                         key=f"pair_{cause}",
                         on_click=choose_pair,
                         args=(group_cases[0]["id"], group_cases[1]["id"]),
                         icon=":material/balance:",
+                        width="stretch",
                     )
 
 
 # ----- 실제 실행 순서 -----
 all_cases = load_cases()
-page_header("compare_arrows", "오류 비교실", "두 오류의 공통점과 차이점을 비교합니다.")
-show_selectors(all_cases)                                          # 1) 두 오류 고르기
 
-case_a = find_case(all_cases, st.session_state["compare_left"])    # 왼쪽 오류 데이터
-case_b = find_case(all_cases, st.session_state["compare_right"])   # 오른쪽 오류 데이터
-
-show_analysis(case_a, case_b)            # 2) 공통점·차이점 분석 (탭)
-show_side_by_side(case_a, case_b)        # 3) 나란히 비교
-st.divider()
-show_cause_groups(all_cases)             # 4) 원인 유형별 묶음
+with crt_frame("pages/compare.py", "COMPARE"):
+    page_banner("compare_arrows", "ERROR COMPARE", "오류 비교실", "두 오류의 공통점과 차이점을 나란히 비교합니다.")
+    show_selectors(all_cases)                                          # 1) 두 오류 고르기
+    case_a = find_case(all_cases, st.session_state["compare_left"])    # 왼쪽 오류 데이터
+    case_b = find_case(all_cases, st.session_state["compare_right"])   # 오른쪽 오류 데이터
+    show_side_by_side(case_a, case_b)        # 2) 나란히 비교
+    show_analysis(case_a, case_b)            # 3) 공통점·차이점 분석 (탭)
+    show_cause_groups(all_cases)             # 4) 원인 유형별 묶음

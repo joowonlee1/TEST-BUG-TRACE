@@ -3,13 +3,15 @@
 # 여러 페이지에서 함께 쓰는 데이터와 함수를 모아 둔 파일
 # - 같은 코드를 페이지마다 반복해서 쓰지 않으려고 한곳에 모았다.
 # - 각 페이지는 맨 위에서 "from common import ..."로 필요한 것만 가져다 쓴다.
+# - 모든 페이지는 crt_frame() 안에 그려져서, 레트로 CRT 모니터 화면 속에 보인다.
 # =============================================================
 
-import json                      # JSON 파일(오류 데이터)을 파이썬 자료로 바꾸는 모듈
-from html import escape          # 글자 속 <, > 같은 기호를 안전하게 바꿔 주는 함수
-from pathlib import Path         # 파일 경로를 운영체제와 상관없이 다루는 도구
+import json                                  # JSON 파일(오류 데이터)을 파이썬 자료로 바꾸는 모듈
+from contextlib import contextmanager        # "with 함수():" 형태로 쓸 수 있는 함수를 만드는 도구
+from html import escape                      # 글자 속 <, > 같은 기호를 안전하게 바꿔 주는 함수
+from pathlib import Path                     # 파일 경로를 운영체제와 상관없이 다루는 도구
 
-import streamlit as st           # 웹앱을 만드는 라이브러리
+import streamlit as st                       # 웹앱을 만드는 라이브러리
 
 
 # -------------------------------------------------------------
@@ -17,8 +19,7 @@ import streamlit as st           # 웹앱을 만드는 라이브러리
 # -------------------------------------------------------------
 
 # 오류 데이터 파일 위치
-# __file__ = 지금 이 파일(common.py)의 위치
-# .parent  = 그 파일이 들어 있는 폴더
+# __file__ = 지금 이 파일(common.py)의 위치, .parent = 그 파일이 들어 있는 폴더
 # 즉 "common.py와 같은 폴더 안의 data/cases.json"을 가리킨다.
 DATA_PATH = Path(__file__).parent / "data" / "cases.json"
 
@@ -32,13 +33,13 @@ CATEGORY_ICONS = {
     "숫자": "calculate",
     "문자": "text_fields",
     "이미지": "image",
-    "파일": "description",
+    "파일": "folder",
     "화면": "desktop_windows",
     "시간": "schedule",
 }
 
 # 원인 유형 이름과 설명 (딕셔너리: "이름": "설명")
-# 오류 비교실에서 두 오류의 원인 유형을 설명할 때 사용한다.
+# 오류 비교실과 오류 도감의 그래프에서 사용한다.
 CAUSE_TYPES = {
     "상태 불일치": "두 곳이 기억하는 정보가 서로 달라서 생기는 오류",
     "표현의 한계": "컴퓨터가 정보를 완벽하게 저장할 수 없어서 생기는 오류",
@@ -47,6 +48,39 @@ CAUSE_TYPES = {
     "자동 해석": "컴퓨터가 데이터의 종류를 스스로 짐작하다가 생기는 오류",
     "환경 차이": "기기나 지역 같은 환경이 달라서 생기는 오류",
 }
+
+# 모니터 화면 위쪽 메뉴: (페이지 파일, 메뉴 이름, 아이콘)
+NAV_PAGES = [
+    ("pages/home.py", "홈", ":material/home:"),
+    ("pages/catalog.py", "오류 도감", ":material/menu_book:"),
+    ("pages/anatomy.py", "원인 해부실", ":material/layers:"),
+    ("pages/laboratory.py", "현상 실험실", ":material/science:"),
+    ("pages/compare.py", "오류 비교실", ":material/compare_arrows:"),
+]
+
+# 픽셀 아트 컴퓨터 그림 (웃는 얼굴 모니터) - 창 제목 줄과 홈 화면에서 사용
+# SVG의 <rect>(사각형)를 1칸짜리 픽셀처럼 쌓아서 그린다.
+# shape-rendering="crispEdges": 사각형 가장자리를 흐리지 않고 또렷하게 그린다.
+PIXEL_COMPUTER_SVG = """
+<svg class="px-computer" viewBox="0 0 40 30" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+<g fill="#1F4D25">
+<rect x="2" y="9" width="4" height="1"/><rect x="3" y="5" width="2" height="1"/><rect x="5" y="6" width="1" height="1"/>
+<rect x="3" y="13" width="2" height="1"/><rect x="5" y="12" width="1" height="1"/>
+<rect x="34" y="9" width="4" height="1"/><rect x="35" y="5" width="2" height="1"/><rect x="34" y="6" width="1" height="1"/>
+<rect x="35" y="13" width="2" height="1"/><rect x="34" y="12" width="1" height="1"/>
+<rect x="10" y="1" width="20" height="18"/><rect x="8" y="20" width="24" height="7"/>
+</g>
+<rect x="11" y="2" width="18" height="16" fill="#E9F2C4"/>
+<rect x="13" y="4" width="14" height="11" fill="#1F4D25"/>
+<rect x="14" y="5" width="12" height="9" fill="#C6EA4E"/>
+<g fill="#1F4D25">
+<rect x="17" y="7" width="1" height="2"/><rect x="22" y="7" width="1" height="2"/>
+<rect x="17" y="10" width="1" height="1"/><rect x="18" y="11" width="4" height="1"/><rect x="22" y="10" width="1" height="1"/>
+</g>
+<rect x="9" y="21" width="22" height="5" fill="#E9F2C4"/>
+<g fill="#1F4D25"><rect x="11" y="23" width="1" height="1"/><rect x="13" y="23" width="1" height="1"/><rect x="22" y="23" width="7" height="1"/></g>
+</svg>
+"""
 
 
 # -------------------------------------------------------------
@@ -72,9 +106,9 @@ def find_case(cases, case_id):
 
 
 def case_label(case):
-    """선택 상자나 버튼에 보여 줄 이름을 만든다. 예) CASE 01 · 완성을 고치다 완완성이 됨"""
-    # :02d → 숫자를 두 자리로 맞춘다. (1 → 01)
-    return f"CASE {case['id']:02d} · {case['title']}"
+    """선택 상자나 버튼에 보여 줄 이름을 만든다. 예) BUG-001 · IME 입력 조합 상태 불일치"""
+    # :03d → 숫자를 세 자리로 맞춘다. (1 → 001)
+    return f"BUG-{case['id']:03d} · {case['title']}"
 
 
 def search_cases(cases, keyword, category):
@@ -88,9 +122,9 @@ def search_cases(cases, keyword, category):
         if category != "전체" and case["category"] != category:
             continue
 
-        # 조건 2) 검색어: 제목, 기술, 요약, 증상, 키워드를 한 문장으로 합친 뒤 검색한다.
+        # 조건 2) 검색어: 제목, 쉬운 이름, 기술, 요약, 증상, 키워드를 한 문장으로 합친 뒤 검색한다.
         searchable_text = " ".join(
-            [case["title"], case["tech"], case["summary"], case["symptom"]]
+            [case["title"], case["nickname"], case["tech"], case["summary"], case["symptom"]]
             + case["keywords"]
         ).lower()
 
@@ -99,6 +133,18 @@ def search_cases(cases, keyword, category):
             results.append(case)
 
     return results
+
+
+def count_values(cases, field, names):
+    """오류 목록에서 field(예: "category") 값이 names의 각 이름과 같은 개수를 센다."""
+    counts = []
+    for name in names:
+        count = 0
+        for case in cases:
+            if case[field] == name:
+                count += 1
+        counts.append(count)
+    return counts
 
 
 # -------------------------------------------------------------
@@ -133,19 +179,84 @@ def icon(name):
     return f'<span class="bt-icon">{escape(name)}</span>'
 
 
-def page_header(icon_name, title, description):
-    """내부 페이지 맨 위에 '아이콘 + 제목 + 설명'을 그린다."""
+def show_window_bar(english_name):
+    """모니터 화면 맨 위 '창 제목 줄': 픽셀 컴퓨터 + BUG TRACE + 현재 위치 + 창 버튼(— □ ×)"""
+    render_html(f"""
+        <div class="win-bar">
+            <div class="win-logo">{PIXEL_COMPUTER_SVG}<span class="win-title">BUG TRACE</span></div>
+            <div class="win-path">C:\\BUG_TRACE\\{escape(english_name)}&gt;<span class="win-cursor"></span></div>
+            <div class="win-btns"><span>—</span><span>□</span><span>×</span></div>
+        </div>
+    """)
+
+
+def show_nav(current_page):
+    """창 제목 줄 아래에 5개 페이지로 가는 메뉴 버튼을 놓는다. 지금 페이지는 라임색으로 강조한다."""
+    columns = st.columns(len(NAV_PAGES))
+    for number, (column, (page_file, name, icon_name)) in enumerate(zip(columns, NAV_PAGES)):
+        with column:
+            # 지금 페이지의 버튼 상자에만 key="nav_active"를 붙여서 CSS로 라임색을 칠한다.
+            box_key = "nav_active" if page_file == current_page else f"nav_{number}"
+            with st.container(key=box_key):
+                # st.page_link: 누르면 해당 페이지로 이동하는 링크
+                st.page_link(page_file, label=name, icon=icon_name, width="stretch")
+
+
+def show_monitor_panel():
+    """모니터 아래쪽 장식: 스피커 구멍, 불빛, 플로피 디스크 입구, 전원 버튼"""
+    render_html(f"""
+        <div class="px-panel">
+            <div class="px-screw"></div>
+            <div class="px-grill"></div>
+            <div class="px-leds"><span class="px-led-on"></span><span class="px-led-dim"></span></div>
+            <div class="px-floppy"></div>
+            <div class="px-grill"></div>
+            <div class="px-power">{icon("power_settings_new")}</div>
+            <div class="px-screw"></div>
+        </div>
+    """)
+
+
+# @contextmanager: 이 함수를 "with crt_frame(...):" 형태로 쓸 수 있게 만든다.
+# with 블록 안에 쓴 코드(각 페이지의 내용)는 yield 자리에서 실행된다.
+@contextmanager
+def crt_frame(current_page, english_name):
+    """레트로 CRT 모니터를 그리고, 그 화면 안에 페이지 내용을 담는다."""
+    with st.container(key="crt"):                 # 모니터 바깥 틀 (베이지 플라스틱)
+        with st.container(key="crt_screen"):      # 모니터 화면 (연두빛 형광 화면)
+            show_window_bar(english_name)        # 1) 창 제목 줄
+            show_nav(current_page)               # 2) 메뉴 버튼
+            yield                                # 3) ← 여기에 각 페이지의 내용이 들어간다
+        show_monitor_panel()                     # 4) 모니터 아래쪽 장식
+
+
+def page_banner(icon_name, english, korean, description):
+    """페이지 맨 위 라임색 픽셀 배너: 아이콘 + 영어 이름 + 한글 이름 + 한 줄 설명"""
     # escape(): 글자 속 <, > 같은 기호가 HTML 태그로 오해되지 않게 바꾼다.
     render_html(f"""
-        <div class="bt-header">
-            <h1 class="bt-title">{icon(icon_name)} {escape(title)}</h1>
-            <p class="bt-desc">{escape(description)}</p>
+        <div class="bt-banner">
+            <div class="bt-banner-main">{icon(icon_name)}<span class="bt-banner-en">{escape(english)}</span><span class="bt-banner-ko">{escape(korean)}</span></div>
+            <div class="bt-banner-desc">{escape(description)}</div>
+        </div>
+    """)
+
+
+def terminal_log(lines):
+    """어두운 초록 '터미널' 상자에 로그 줄들을 보여 준다. lines = [(종류, 내용), ...]"""
+    # 종류(INFO, WARN 등)마다 색이 다른 이름표를 붙인다.
+    rows = ""
+    for level, text in lines:
+        rows += f'<div><span class="log-{level.lower()}">[{escape(level)}]</span> {escape(text)}</div>'
+    render_html(f"""
+        <div class="bt-term">
+            <div class="bt-term-bar"><span></span><span></span><span></span> ERROR_LOG</div>
+            <div class="bt-term-body">&gt; ERROR_LOG...{rows}<div>&gt; <span class="win-cursor"></span></div></div>
         </div>
     """)
 
 
 def case_card(case):
-    """오류 카드 한 장의 내용(번호, 분류, 제목, 기술, 요약)을 그린다."""
+    """오류 카드 한 장의 내용(분류, 번호, 전문용어 제목, 쉬운 이름, 요약)을 그린다."""
     category_icon = CATEGORY_ICONS[case["category"]]
     render_html(f"""
         <div class="bt-card">
@@ -154,409 +265,236 @@ def case_card(case):
                 <span class="bt-no">BUG-{case['id']:03d}</span>
             </div>
             <div class="bt-card-title">{escape(case['title'])}</div>
-            <div class="bt-card-tech">{escape(case['tech'])}</div>
+            <div class="bt-card-nick">“{escape(case['nickname'])}”</div>
             <div class="bt-card-summary">{escape(case['summary'])}</div>
         </div>
     """)
 
 
 def apply_style():
-    """앱 전체에 적용할 디자인(CSS)을 넣는다. → 라임색 다크 터미널 스타일"""
+    """앱 전체 디자인(CSS): 화면을 가득 채우는 베이지 레트로 CRT 모니터 + 픽셀 스타일"""
     render_html("""
         <style>
-        /* 1) 글꼴 불러오기: 본문 한글 글꼴, 코딩용 한글 글꼴, 레트로 영문 글꼴 */
-        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic+Coding:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;800&family=VT323&display=swap');
+        /* ===== 1) 글꼴 불러오기 =====
+           Galmuri: 한글 픽셀 글꼴(무료, SIL 오픈 폰트 라이선스) / Press Start 2P: 영어 픽셀 글꼴
+           Noto Sans KR: 본문 글꼴 / Nanum Gothic Coding: 코드·터미널 글꼴 */
+        @import url('https://cdn.jsdelivr.net/npm/galmuri@2.40.2/dist/galmuri.css');
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nanum+Gothic+Coding:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
 
-        /* 2) 자주 쓰는 색을 변수로 정해 둔다. (한곳에서만 정의) */
+        /* ===== 2) 색 변수 (한곳에서만 정의) ===== */
         :root {
-            --bt-bg: #101417;        /* 배경 */
-            --bt-panel: #1C2529;     /* 상자 배경 */
-            --bt-line: #46554A;      /* 테두리 */
-            --bt-text: #E9EDE7;      /* 기본 글자 */
-            --bt-dim: #BFCBC1;       /* 흐린 글자 (배경과 대비가 충분한 밝기) */
-            --bt-lime: #B7E66B;      /* 대표 강조 색(라임) */
-            --bt-lime-soft: rgba(183, 230, 107, 0.14);   /* 라임색 옅은 배경 */
-            --bt-lime-line: rgba(183, 230, 107, 0.55);   /* 라임색 옅은 테두리 */
-            --bt-glow: 0 0 18px rgba(183, 230, 107, 0.25); /* 라임색 빛 번짐 */
-            --bt-red: #ff5c7a;       /* 오류(빨강) */
-            --bt-yellow: #ffd166;    /* 핵심·추정(노랑) */
-            --bt-sky: #8fc7ff;       /* 직접 관찰(하늘색) */
+            --ink: #1F4D25;        /* 픽셀 테두리·진한 초록 (잉크 색) */
+            --lime: #C6EA4E;       /* 강조 배경: 라임 */
+            --lime-soft: #E7F3C2;  /* 옅은 라임 */
+            --screen: #EEF5D8;     /* 모니터 화면 바탕 */
+            --paper: #FBFDF1;      /* 상자 바탕 (밝은 화면색) */
+            --text: #1E3322;       /* 기본 글자 */
+            --dim: #3F5844;        /* 보조 글자 (화면 위에서도 충분히 진하게) */
+            --red: #A23A2E;        /* 오류: 벽돌색 */
+            --yellow: #7A5A06;     /* 핵심·추정: 황토색 */
+            --sky: #245A86;        /* 직접 관찰: 파랑 */
+            --beige: #E8DDC4;      /* 모니터 플라스틱 */
         }
 
-        /* 3) 전체 배경과 본문 영역 */
-        html, body, [data-testid="stAppViewContainer"] { background: var(--bt-bg); }
-        .block-container { max-width: 1280px; padding: 4.8rem 2.6rem 5rem; }  /* 위쪽 여백: 메뉴 바에 가리지 않게 */
+        /* ===== 3) 배경(벽)과 본문 폭, 여백 줄이기 ===== */
+        html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+            background: #E6DCC6; color: var(--text);   /* 배경은 단색. 장식 없이 모니터만 보이게 */
+        }
+        header[data-testid="stHeader"] { display: none; }        /* Streamlit 기본 상단 바 숨기기 (메뉴는 모니터 안에 있음) */
+        .block-container { max-width: 100%; padding: 10px 16px 16px; }   /* 모니터가 화면 폭을 가득 채우도록 */
+        [data-testid="stVerticalBlock"] { gap: 0.55rem; }          /* 요소 사이 간격을 촘촘하게 */
+        [data-testid="stHorizontalBlock"] { gap: 0.6rem; }
 
-        /* 4) 글꼴과 글자 크기 (읽기 쉽게 크고 넉넉하게) */
+        /* ===== 4) 글꼴 ===== */
         .stMarkdown p, .stMarkdown li, [data-testid="stWidgetLabel"] p {
-            font-family: 'Noto Sans KR', sans-serif; font-size: 1rem; line-height: 1.72;
+            font-family: 'Noto Sans KR', sans-serif; font-size: 0.97rem; line-height: 1.65; color: var(--text);
         }
-        h1, h2, h3, h4 {
-            font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; line-height: 1.35 !important;
-        }
-        code, pre, .bt-no, .bt-box-label, .bt-basis { font-family: 'Nanum Gothic Coding', monospace !important; }
-
-        /* 5) HTML 안에서 쓰는 아이콘 (Material Symbols 글꼴) */
+        [data-testid="stCaptionContainer"] p { color: var(--dim); font-size: 0.88rem; }
+        h1, h2, h3, h4 { font-family: 'Galmuri11', 'Noto Sans KR', sans-serif !important; font-weight: 700 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; }
+        h2 { font-size: 1.45rem !important; } h3 { font-size: 1.15rem !important; }
+        code, pre { font-family: 'Nanum Gothic Coding', monospace !important; }
         .bt-icon {
-            font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal;
-            font-size: 1.15em; line-height: 1; vertical-align: -0.18em;
-            display: inline-block; letter-spacing: normal; text-transform: none; white-space: nowrap;
-            -webkit-font-feature-settings: 'liga'; font-feature-settings: 'liga';
+            font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; font-size: 1.15em;
+            line-height: 1; vertical-align: -0.18em; display: inline-block; letter-spacing: normal;
+            text-transform: none; white-space: nowrap; font-feature-settings: 'liga';
         }
 
-        /* 6) 위쪽 메뉴 바 */
-        header[data-testid="stHeader"] {
-            background: #0c1110; border-bottom: 1px solid var(--bt-lime-line);
+        /* ===== 5) CRT 모니터 바깥 틀과 화면 ===== */
+        /* 바깥 틀: 두꺼운 베이지 플라스틱. 위쪽은 밝게, 아래쪽은 어둡게 칠해서 입체감을 준다 */
+        .st-key-crt {
+            background: linear-gradient(165deg, #F6EEDC 0%, #E6D8BA 55%, #D2C2A0 100%);
+            border: 3px solid #B9A884; border-radius: clamp(22px, 3vw, 46px);
+            padding: clamp(14px, 2.6vw, 42px) clamp(14px, 3vw, 50px) clamp(8px, 1vw, 14px); gap: 0;
+            box-shadow: inset 0 5px 0 #FFFAEC, inset 0 -8px 0 #C6B490, 0 20px 34px rgba(70, 55, 30, .30);
+        }
+        /* 화면: 가운데는 밝고 가장자리는 초록빛으로 어두워지는 CRT 유리 + 가로 주사선 + 진한 초록 테두리
+           box-shadow 바깥쪽 고리 2개 = 화면이 플라스틱 틀 안으로 쏙 들어간 '홈'처럼 보이게 한다 */
+        .st-key-crt_screen {
+            border-radius: clamp(18px, 2.6vw, 40px); padding: clamp(10px, 1.4vw, 22px) clamp(12px, 1.8vw, 30px); gap: 0.55rem;
+            background:
+                repeating-linear-gradient(0deg, rgba(31, 77, 37, .07) 0px, rgba(31, 77, 37, .07) 1px, transparent 2px, transparent 4px),
+                radial-gradient(ellipse at 50% 45%, #F8FBEA 0%, #EEF5D6 55%, #D9E8AE 85%, #B7D27F 100%);
+            border: clamp(6px, 0.8vw, 12px) solid #234B22;
+            box-shadow: inset 0 0 0 3px #8FB05A, inset 0 0 70px rgba(70, 125, 35, .55),
+                        0 0 0 clamp(6px, 0.8vw, 12px) #D3C5A6, 0 0 0 clamp(8px, 1vw, 15px) #B9A884;
         }
 
-        /* 7) 페이지 제목 (아이콘 + 제목 + 설명) */
-        .bt-header { border-bottom: 1px solid var(--bt-line); padding-bottom: 20px; margin-bottom: 26px; }
-        .bt-title { color: var(--bt-text); font-size: clamp(1.8rem, 3vw, 2.5rem); margin: 0 0 6px 0; padding: 0; }
-        .bt-title .bt-icon { color: var(--bt-lime); }
-        .bt-desc { color: var(--bt-dim); font-size: 1.05rem; line-height: 1.7; margin: 0; }
-
-        /* 8) 오류 카드 */
-        .bt-card { min-height: 175px; }
-        .bt-card-top { display: flex; justify-content: space-between; align-items: center; }
-        .bt-no { color: var(--bt-lime); font-size: 0.9rem; font-weight: 700; }
-        .bt-tag {
-            color: var(--bt-lime); font-size: 0.9rem; font-weight: 700;
-            border: 1px solid var(--bt-lime-line); border-radius: 8px; padding: 4px 10px;
+        /* 창 제목 줄: 픽셀 컴퓨터 + BUG TRACE + 경로 + 창 버튼 */
+        .win-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 6px; border-bottom: 3px solid var(--ink); }
+        .win-logo { display: flex; align-items: center; gap: 10px; }
+        .win-logo .px-computer { width: 64px; height: auto; }
+        .win-title { font-family: 'Press Start 2P', monospace; font-size: 1.55rem; color: var(--ink); letter-spacing: 1px; }
+        .win-path { flex: 1; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); font-size: 0.95rem; text-align: right; }
+        .win-cursor { display: inline-block; width: 9px; height: 1em; margin-left: 4px; background: var(--ink); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+        .win-btns { display: flex; gap: 6px; }
+        .win-btns span {
+            width: 30px; height: 28px; display: flex; align-items: center; justify-content: center;
+            background: var(--paper); color: var(--ink); font-weight: 800; font-size: 1rem; margin: 3px;
+            box-shadow: 0 -3px 0 0 var(--ink), 0 3px 0 0 var(--ink), -3px 0 0 0 var(--ink), 3px 0 0 0 var(--ink);
         }
-        .bt-card-title { color: var(--bt-text); font-size: 1.22rem; font-weight: 800; line-height: 1.45; margin-top: 10px; }
-        .bt-card-tech { color: var(--bt-lime); font-size: 0.94rem; font-weight: 700; margin: 2px 0 8px 0; }
-        .bt-card-summary { color: var(--bt-dim); font-size: 1rem; line-height: 1.7; }
+        @keyframes blink { 50% { opacity: 0; } }
 
-        /* 9) 설명 상자 (정상 = 라임, 오류 = 빨강, 핵심 = 노랑, 직접 관찰 = 하늘) */
-        .bt-box {
-            background: var(--bt-panel); border: 1px solid var(--bt-line);
-            border-radius: 13px; padding: 20px 22px; margin-bottom: 12px; color: var(--bt-text); line-height: 1.75;
-        }
-        .bt-box-label { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
-        .bt-ok { border-left: 4px solid var(--bt-lime); }
-        .bt-ok .bt-box-label { color: var(--bt-lime); }
-        .bt-obs { border-left: 4px solid var(--bt-sky); }
-        .bt-obs .bt-box-label { color: var(--bt-sky); }
-        .bt-err { border-left: 4px solid var(--bt-red); }
-        .bt-err .bt-box-label { color: var(--bt-red); }
-        .bt-key { border-left: 4px solid var(--bt-yellow); }
-        .bt-key .bt-box-label { color: var(--bt-yellow); }
+        /* 모니터 아래쪽: 스피커, 불빛, 플로피 디스크, 전원 버튼 */
+        .px-panel { display: flex; align-items: center; justify-content: space-between; gap: 2vw; padding: clamp(12px, 1.6vw, 26px) 1vw 2px; }
+        .px-screw { width: 14px; height: 14px; border-radius: 50%; background: #D8CAAA; border: 2px solid #9C8D6E; box-shadow: inset 2px 2px 0 #F3EAD4; }
+        .px-grill { width: 15vw; max-width: 240px; height: 38px; background: repeating-linear-gradient(0deg, #7E735C 0 4px, transparent 4px 9px); border-radius: 3px; }
+        .px-leds { display: flex; gap: 14px; }
+        .px-leds span { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #6C6450; }
+        .px-led-on { background: #6BD43C; box-shadow: 0 0 10px #6BD43C; }
+        .px-led-dim { background: #A39324; }
+        /* 플로피 디스크 입구: 틀 + 검은 틈 + 꺼내는 버튼 */
+        .px-floppy { width: 22vw; max-width: 360px; height: 58px; border: 3px solid #A99B7E; border-radius: 5px; background: linear-gradient(180deg, #F3EAD5, #E2D5B8); position: relative; box-shadow: inset 0 2px 0 #FFF8E8; }
+        .px-floppy::before { content: ""; position: absolute; left: 7%; right: 26%; top: 22px; height: 10px; background: #2F2B22; border-radius: 2px; }
+        .px-floppy::after { content: ""; position: absolute; right: 6%; top: 17px; width: 15%; height: 20px; background: #F7F0DE; border: 3px solid #A99B7E; border-radius: 3px; }
+        /* 라임색 전원 버튼 (아래쪽 그림자로 눌리는 버튼처럼) */
+        .px-power { width: 76px; height: 56px; background: var(--lime); border: 4px solid var(--ink); display: flex; align-items: center; justify-content: center; color: var(--ink); box-shadow: 0 5px 0 #6E8F2C; }
+        .px-power .bt-icon { font-size: 2rem; }
 
-        /* 10) 처리 과정 그림 (입력 → 처리 → 출력) */
-        .bt-flow { display: flex; align-items: stretch; gap: 10px; margin: 6px 0 18px 0; }
-        .bt-flow-box {
-            flex: 1; text-align: center; padding: 16px 12px; border-radius: 13px;
-            border: 1.5px solid var(--bt-lime); background: var(--bt-lime-soft); box-shadow: var(--bt-glow);
-        }
-        .bt-flow-box .bt-icon { font-size: 2rem; color: var(--bt-lime); }
-        .bt-flow-name { color: var(--bt-lime); font-weight: 800; margin: 4px 0; }
-        .bt-flow-text { color: var(--bt-text); font-size: 0.95rem; line-height: 1.5; }
-        .bt-flow-out { border-color: var(--bt-red); background: rgba(255, 92, 122, 0.08); box-shadow: none; }
-        .bt-flow-out .bt-icon, .bt-flow-out .bt-flow-name { color: var(--bt-red); }
-        .bt-flow-arrow { align-self: center; color: var(--bt-lime); font-size: 1.6rem; }
-
-        /* 11) 발생 과정 단계 (TRACE #01 → #02 → #03 흐름) */
-        .bt-step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 0; }
-        .bt-step-no {
-            flex: 0 0 42px; height: 42px; border-radius: 9px; text-align: center; line-height: 42px;
-            background: var(--bt-lime-soft); color: var(--bt-lime);
-            font-family: 'Nanum Gothic Coding', monospace; font-weight: 700;
-        }
-        .bt-step-text { line-height: 1.7; padding-top: 4px; font-size: 1rem; }
-        .bt-arrow { color: var(--bt-lime); opacity: 0.6; padding: 2px 0 2px 30px; font-size: 0.9rem; line-height: 1.1; }
-
-        /* 12) 단계별 근거 이름표 (문서로 확인 = 라임, 추정 = 노랑) */
-        .bt-basis {
-            display: inline-block; font-size: 0.85rem; font-weight: 700;
-            border-radius: 6px; padding: 1px 8px; margin-bottom: 4px;
-        }
-        .bt-basis-ok { color: var(--bt-lime); border: 1px solid var(--bt-lime-line); }
-        .bt-basis-guess { color: var(--bt-yellow); border: 1px solid rgba(255, 209, 102, 0.5); }
-
-        /* 13) 작은 이름표 (BUG-001, 분류, 기술 등) */
-        .bt-badge {
-            display: inline-block; font-family: 'Nanum Gothic Coding', monospace; font-size: 0.9rem; font-weight: 700;
-            border: 1px solid var(--bt-line); border-radius: 6px; padding: 3px 10px; margin: 0 6px 6px 0;
-            color: var(--bt-dim);
-        }
-        .bt-badge-on { color: var(--bt-lime); border-color: var(--bt-lime-line); }
-
-        /* 14) 버튼: 크고 굵게 (누르기 쉽게) */
+        /* ===== 6) 픽셀 테두리 (모서리가 한 칸 비는 도트 느낌)
+           테두리(border) 대신 위·아래·왼쪽·오른쪽 그림자 4개를 붙인다. 그림자끼리 모서리에서 만나지 않아 계단처럼 보인다. ===== */
+        /* 두꺼운 픽셀 버튼: 진한 초록 그림자 4개(테두리) + 안쪽 아래 그림자(입체감) + 바깥 아래 그림자(바닥에 놓인 느낌) */
         div.stButton > button, div[data-testid="stPageLink"] a {
-            min-height: 52px; padding: 10px 20px; border-radius: 12px;
-            font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important;
-            border: 1.5px solid #6c8a58; background: #202b27; color: #eef4e8;
-            transition: background-color .14s ease, border-color .14s ease, box-shadow .14s ease;
+            border: none !important; border-radius: 0; margin: 5px 5px 10px; min-height: 48px; padding: 6px 14px;
+            background: var(--paper); transition: background-color .12s ease, transform .08s ease;
+            box-shadow: 0 -5px 0 0 var(--ink), 0 5px 0 0 var(--ink), -5px 0 0 0 var(--ink), 5px 0 0 0 var(--ink),
+                        inset 0 -5px 0 0 rgba(31, 77, 37, .14), 0 10px 0 0 rgba(31, 77, 37, .28) !important;
         }
-        div.stButton > button p { font-size: 1.05rem !important; font-weight: 800 !important; }
-        div.stButton > button:hover { border-color: var(--bt-lime); background: #2d3c2d; box-shadow: var(--bt-glow); }
-        /* 라임색(주요) 버튼: 밝은 배경이라 글자는 어두운 색 */
-        div.stButton > button[kind="primary"] { background: var(--bt-lime); border-color: var(--bt-lime); color: #101417; }
-        div.stButton > button[kind="primary"] p { color: #101417 !important; }
-        div.stButton > button[kind="primary"]:hover { background: #cef48d; }
-        /* 키보드로 이동할 때 지금 위치가 잘 보이게 */
-        button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--bt-lime) !important; outline-offset: 3px; }
+        div.stButton > button:active, div[data-testid="stPageLink"] a:active { transform: translateY(3px); }   /* 누르면 살짝 내려간다 */
+        div.stButton > button p, div[data-testid="stPageLink"] a p {
+            font-family: 'Galmuri11', 'Noto Sans KR', sans-serif !important; font-size: 1.05rem !important;
+            font-weight: 700 !important; color: var(--ink) !important;
+        }
+        div.stButton > button [data-testid="stIconMaterial"], div[data-testid="stPageLink"] a [data-testid="stIconMaterial"] { color: var(--ink) !important; font-weight: 700; margin-right: 8px; }   /* margin-right: 아이콘과 글자 사이 간격 */
+        div.stButton > button:hover, div[data-testid="stPageLink"] a:hover { background: var(--lime-soft); }
+        div.stButton > button[kind="primary"] { background: var(--lime); }
+        div.stButton { padding-top: 8px; }   /* 버튼 위쪽 여백: 바로 위 글 상자와 픽셀 테두리가 겹치지 않게 */
+        div.stButton > button[kind="primary"]:hover { background: #D7F57E; }
+        /* 메뉴 버튼: 지금 있는 페이지는 라임색 */
+        .st-key-nav_active div[data-testid="stPageLink"] a { background: var(--lime) !important; }
+        div[data-testid="stPageLink"] a { justify-content: center; }
+        div[data-testid="stPageLink"] a > span:first-child { margin-right: 10px; }   /* 아이콘을 감싼 칸 오른쪽에 간격 → 아이콘과 글자가 붙지 않게 */
+        button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--sky) !important; outline-offset: 3px; }
 
-        /* 15) 분류 선택(라디오)을 큰 칩 버튼처럼 */
-        div[data-testid="stRadio"] > div[role="radiogroup"] { display: flex; flex-wrap: wrap; gap: 10px 12px; }
+        /* ===== 7) 페이지 배너 (예: ERROR CATALOG · 오류 도감) ===== */
+        .bt-banner {
+            background: var(--lime); margin: 10px 6px 14px; padding: 10px 18px; text-align: center;
+            box-shadow: 0 -5px 0 0 var(--ink), 0 5px 0 0 var(--ink), -5px 0 0 0 var(--ink), 5px 0 0 0 var(--ink);
+        }
+        .bt-banner-main { display: flex; align-items: center; justify-content: center; gap: 14px; color: var(--ink); }
+        .bt-banner-main .bt-icon { font-size: 2rem; }
+        .bt-banner-en { font-family: 'Press Start 2P', monospace; font-size: 1.45rem; }
+        .bt-banner-ko { font-family: 'Galmuri11', sans-serif; font-weight: 700; font-size: 1.2rem; }
+        .bt-banner-desc { color: var(--ink); font-size: 0.92rem; font-weight: 600; margin-top: 4px; }
+
+        /* ===== 8) 오류 카드 ===== */
+        .bt-card-top { display: flex; justify-content: space-between; align-items: center; }
+        .bt-no { font-family: 'Galmuri11', monospace; color: var(--ink); font-size: 0.85rem; font-weight: 700; }
+        .bt-tag { font-family: 'Galmuri11', sans-serif; color: var(--ink); font-size: 0.85rem; font-weight: 700; background: var(--lime-soft); border: 2px solid var(--ink); padding: 2px 8px; }
+        .bt-card-title { color: var(--ink); font-size: 1.05rem; font-weight: 800; line-height: 1.4; margin-top: 8px; }
+        .bt-card-nick { color: #2F6B2A; font-size: 0.9rem; font-weight: 700; margin: 2px 0 4px 0; }
+        /* 요약은 두 줄까지만 보여 준다 (카드 높이를 일정하게, 스크롤을 줄이려고) */
+        .bt-card-summary { color: var(--dim); font-size: 0.88rem; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        /* ===== 9) 테두리 상자, 입력창, 선택 상자, 탭 ===== */
+        div[data-testid="stVerticalBlockBorderWrapper"] { background: var(--paper); border-radius: 0; border: 3px solid var(--ink); padding: 10px 12px; }
+        div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 44px; border-radius: 0; background-color: #FFFFFF; border: 3px solid var(--ink); }
+        [data-testid="stWidgetLabel"] p { font-family: 'Galmuri11', sans-serif !important; font-weight: 700 !important; color: var(--ink) !important; }
+        div[data-testid="stCodeBlock"], pre { border-radius: 0; }
+        [data-testid="stTabs"] button p { font-family: 'Galmuri11', sans-serif !important; font-weight: 700 !important; font-size: 1rem !important; color: var(--ink) !important; }
+        .stMarkdown a { color: #2F6B2A; text-decoration: underline; font-weight: 600; }
+        hr { border-color: var(--ink) !important; opacity: .3; margin: 0.4rem 0 !important; }
+
+        /* 분류 선택(라디오)을 픽셀 칩 버튼처럼 */
+        div[data-testid="stRadio"] > div[role="radiogroup"] { display: flex; flex-wrap: wrap; gap: 8px 10px; }
         div[data-testid="stRadio"] > div[role="radiogroup"] > label {
-            display: inline-flex; align-items: center; justify-content: center;
-            min-height: 48px; min-width: 92px; padding: 8px 16px; margin: 0;
-            border: 1.5px solid #5b7654; border-radius: 24px; background: #1c2923; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; min-height: 42px; min-width: 88px;
+            padding: 6px 14px; margin: 4px; background: var(--paper); cursor: pointer;
+            box-shadow: 0 -3px 0 0 var(--ink), 0 3px 0 0 var(--ink), -3px 0 0 0 var(--ink), 3px 0 0 0 var(--ink);
         }
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover { background: #2a3c2d; border-color: var(--bt-lime); }
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) { background: var(--bt-lime); border-color: var(--bt-lime); }
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p,
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) span { color: #101417 !important; }
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label p { font-size: 1rem !important; font-weight: 800 !important; }
-        /* 동그란 라디오 표시는 숨긴다 */
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child { width: 0; height: 0; overflow: hidden; margin: 0; padding: 0; }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover { background: var(--lime-soft); }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) { background: var(--lime); }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label p { font-family: 'Galmuri11', sans-serif !important; font-size: 0.98rem !important; font-weight: 700 !important; color: var(--ink) !important; }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label [data-testid="stIconMaterial"] { color: var(--ink) !important; }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child { width: 0; height: 0; overflow: hidden; margin: 0; padding: 0; }   /* 동그란 라디오 표시 숨기기 */
 
-        /* 16) 입력창, 선택 상자, 테두리 상자, 탭 */
-        div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
-            min-height: 50px; border-radius: 11px; background-color: #18211f; border-color: #61745e;
-        }
-        [data-testid="stWidgetLabel"] p { font-weight: 700 !important; color: var(--bt-text); }
-        div[data-testid="stVerticalBlockBorderWrapper"] { background: var(--bt-panel); border-radius: 14px; border-color: var(--bt-line); }
-        div[data-testid="stCodeBlock"], pre { border-radius: 12px; }
-        [data-testid="stTabs"] button p { font-weight: 800 !important; font-size: 1rem !important; }
-        .stMarkdown a { color: var(--bt-lime); }
+        /* ===== 10) 터미널 로그 상자 ===== */
+        .bt-term { background: #163A1C; border: 3px solid var(--ink); color: #CFF5A8; height: 100%; }
+        .bt-term-bar { background: var(--ink); color: #CFF5A8; font-family: 'Galmuri11', monospace; font-size: 0.8rem; padding: 4px 8px; }
+        .bt-term-bar span { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #CFF5A8; margin-right: 4px; }
+        .bt-term-body { font-family: 'Galmuri11', monospace; font-size: 0.88rem; line-height: 1.7; padding: 8px 12px; }
+        .bt-term-body .win-cursor { background: #CFF5A8; }
+        .log-info { color: #9FE870; } .log-warn { color: #F2D46B; } .log-analyze { color: #8FD3FF; } .log-ok { color: #C6EA4E; }
 
-        /* 17) 좁은 화면(휴대폰)에서는 여백과 글자를 조금 줄인다 */
+        /* ===== 10-1) 픽셀 막대그래프 (오류 도감 아래쪽) ===== */
+        .pxbar { background: var(--paper); border: 3px solid var(--ink); padding: 8px 12px; height: 100%; }
+        .pxbar-title { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 0.92rem; margin-bottom: 6px; }
+        .pxbar-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+        .pxbar-name { flex: 0 0 118px; white-space: nowrap; font-family: 'Galmuri11', sans-serif; font-size: 0.85rem; color: var(--text); text-align: right; }
+        .pxbar-track { flex: 1; height: 16px; background: var(--lime-soft); border: 2px solid var(--ink); }
+        /* 막대 안쪽을 세로 줄무늬로 칠해서 도트(픽셀) 블록이 쌓인 것처럼 보이게 한다 */
+        .pxbar-fill { display: block; height: 100%; background: repeating-linear-gradient(90deg, #2F6B2A 0 10px, #4E8A35 10px 12px); }
+        .pxbar-count { flex: 0 0 18px; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); }
+
+        /* ===== 11) 설명 상자 (정상 = 초록, 오류 = 벽돌, 핵심 = 황토, 관찰 = 파랑) ===== */
+        .bt-box { background: var(--paper); border: 2px solid var(--ink); padding: 10px 14px; margin-bottom: 6px; color: var(--text); line-height: 1.6; font-size: 0.95rem; }
+        .bt-box-label { font-family: 'Galmuri11', monospace; font-size: 0.85rem; font-weight: 700; margin-bottom: 3px; }
+        .bt-ok { border-left: 8px solid #2F6B2A; } .bt-ok .bt-box-label { color: #2F6B2A; }
+        .bt-obs { border-left: 8px solid var(--sky); } .bt-obs .bt-box-label { color: var(--sky); }
+        .bt-err { border-left: 8px solid var(--red); } .bt-err .bt-box-label { color: var(--red); }
+        .bt-key { border-left: 8px solid var(--yellow); } .bt-key .bt-box-label { color: var(--yellow); }
+
+        /* 처리 과정 그림 (입력 → 처리 → 출력) */
+        .bt-flow { display: flex; align-items: stretch; gap: 8px; margin: 2px 0 6px 0; }
+        .bt-flow-box { flex: 1; text-align: center; padding: 8px 8px; border: 3px solid var(--ink); background: var(--lime-soft); }
+        .bt-flow-box .bt-icon { font-size: 1.6rem; color: var(--ink); }
+        .bt-flow-name { font-family: 'Galmuri11', sans-serif; color: var(--ink); font-weight: 700; margin: 2px 0; }
+        .bt-flow-text { color: var(--text); font-size: 0.88rem; line-height: 1.45; }
+        .bt-flow-out { border-color: var(--red); background: #FBE7DF; }
+        .bt-flow-out .bt-icon, .bt-flow-out .bt-flow-name { color: var(--red); }
+        .bt-flow-arrow { align-self: center; color: var(--ink); font-size: 1.4rem; font-weight: 800; }
+
+        /* 단계별 추적 기록 (#01 → #02 …) */
+        .bt-step { display: flex; gap: 10px; align-items: flex-start; }
+        .bt-step-no { flex: 0 0 44px; height: 36px; text-align: center; line-height: 32px; background: var(--lime); color: var(--ink); border: 2px solid var(--ink); font-family: 'Galmuri11', monospace; font-weight: 700; }
+        .bt-step-text { line-height: 1.6; font-size: 0.93rem; color: var(--text); }
+        .bt-basis { display: inline-block; font-family: 'Galmuri11', monospace; font-size: 0.78rem; font-weight: 700; padding: 0 6px; margin-bottom: 2px; background: var(--paper); }
+        .bt-basis-ok { color: #2F6B2A; border: 2px solid #2F6B2A; }
+        .bt-basis-guess { color: var(--yellow); border: 2px solid var(--yellow); }
+
+        /* 작은 이름표 (BUG-001, 분류, 기술 등) */
+        .bt-badge { display: inline-block; font-family: 'Galmuri11', monospace; font-size: 0.82rem; font-weight: 700; border: 2px solid var(--ink); padding: 1px 8px; margin: 0 4px 4px 0; color: var(--ink); background: var(--paper); }
+        .bt-badge-on { background: var(--lime); }
+
+        /* ===== 12) 좁은 화면(휴대폰) ===== */
         @media (max-width: 800px) {
-            .block-container { padding: 4.5rem 1rem 4rem; }
-            .bt-card-title { font-size: 1.12rem; }
-            .bt-flow { flex-direction: column; }
-            .bt-flow-arrow { transform: rotate(90deg); }
+            .st-key-crt { padding: 10px 8px 6px; border-radius: 18px; }
+            .st-key-crt_screen { padding: 8px 8px 12px; border-width: 4px; border-radius: 14px; }
+            .win-title { font-size: 0.95rem; } .win-path { display: none; }
+            .win-logo .px-computer { width: 40px; }
+            .bt-banner-en { font-size: 0.9rem; } .bt-banner-ko { font-size: 1rem; }
+            .px-grill, .px-floppy { display: none; }
+            .bt-flow { flex-direction: column; } .bt-flow-arrow { transform: rotate(90deg); }
         }
-        /* 18) 움직임을 줄이는 설정을 켠 사용자에게는 애니메이션을 끈다 */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
-        }
-
-        /* 19) 접근성 및 가독성: 전체 화면의 흐릿한 글씨 보정 */
-        [data-testid="stAppViewContainer"], [data-testid="stMain"] {
-            color: #E9EDE7;
-        }
-        [data-testid="stMarkdownContainer"] p,
-        [data-testid="stMarkdownContainer"] li,
-        [data-testid="stWidgetLabel"] p {
-            color: #E9EDE7;
-            opacity: 1 !important;
-        }
-        [data-testid="stCaptionContainer"] p,
-        [data-testid="stHelperText"] p,
-        [data-testid="stMetricLabel"] p {
-            color: #CBD8CE !important;
-            opacity: 1 !important;
-            font-size: 0.93rem !important;
-        }
-
-        /* 20) Streamlit 상단 내비게이션: 선택되지 않은 메뉴도 밝게 */
-        [data-testid="stNavigation"],
-        [data-testid="stTopNav"],
-        [data-testid="stTopNav"] nav,
-        [data-testid="stNavigation"] nav {
-            background: #101714 !important;
-        }
-        [data-testid="stTopNav"] a,
-        [data-testid="stTopNav"] button,
-        [data-testid="stNavigation"] a,
-        [data-testid="stNavigation"] button,
-        header[data-testid="stHeader"] a {
-            color: #E9EDE7 !important;
-            opacity: 1 !important;
-            font-family: 'Noto Sans KR', sans-serif !important;
-            font-size: 1.05rem !important;
-            font-weight: 800 !important;
-            min-height: 48px;
-        }
-        [data-testid="stTopNav"] a *,
-        [data-testid="stTopNav"] button *,
-        [data-testid="stNavigation"] a *,
-        [data-testid="stNavigation"] button * {
-            color: inherit !important;
-            opacity: 1 !important;
-            font-weight: 800 !important;
-        }
-        [data-testid="stTopNav"] a[aria-current="page"],
-        [data-testid="stNavigation"] a[aria-current="page"],
-        [data-testid="stTopNav"] a[aria-selected="true"],
-        [data-testid="stNavigation"] a[aria-selected="true"] {
-            background: #B7E66B !important;
-            color: #101417 !important;
-            border-radius: 10px;
-        }
-        [data-testid="stTopNav"] a:hover,
-        [data-testid="stNavigation"] a:hover {
-            background: #2B3A30;
-            color: #FFFFFF !important;
-            border-radius: 10px;
-        }
-
-        /* 21) 버튼: Streamlit 내부 텍스트까지 색상 지정 */
-        div.stButton > button,
-        div.stButton > button *,
-        div[data-testid="stPageLink"] a,
-        div[data-testid="stPageLink"] a * {
-            color: #F4F8F0 !important;
-            opacity: 1 !important;
-            font-weight: 800 !important;
-        }
-        div.stButton > button[kind="primary"],
-        div.stButton > button[kind="primary"] *,
-        div.stButton > button[data-testid="stBaseButton-primary"],
-        div.stButton > button[data-testid="stBaseButton-primary"] * {
-            color: #101417 !important;
-            background-color: #B7E66B;
-        }
-        div.stButton > button:disabled,
-        div.stButton > button:disabled * {
-            color: #C3CEC4 !important;
-            opacity: 1 !important;
-        }
-
-        /* 22) 입력창: 날짜·시간·검색·선택 메뉴의 값과 안내문 */
-        div[data-baseweb="input"] input,
-        div[data-baseweb="select"] input,
-        div[data-baseweb="select"] [role="combobox"],
-        div[data-baseweb="select"] [role="combobox"] *,
-        [data-testid="stDateInput"] input,
-        [data-testid="stTimeInput"] input,
-        textarea {
-            color: #F2F6F0 !important;
-            -webkit-text-fill-color: #F2F6F0 !important;
-            font-family: 'Noto Sans KR', sans-serif !important;
-            font-size: 1.04rem !important;
-            font-weight: 700 !important;
-            opacity: 1 !important;
-        }
-        input::placeholder, textarea::placeholder {
-            color: #BAC9BC !important;
-            -webkit-text-fill-color: #BAC9BC !important;
-            opacity: 1 !important;
-        }
-        div[data-baseweb="input"] > div,
-        div[data-baseweb="select"] > div {
-            background: #202B28 !important;
-            border: 1.5px solid #758D76 !important;
-        }
-        [data-baseweb="popover"] [role="option"],
-        [data-baseweb="popover"] [role="option"] * {
-            color: #E9EDE7 !important;
-            font-size: 1rem !important;
-            font-weight: 700 !important;
-        }
-
-        /* 23) 분류 필터: 모든 칩이 읽히고 선택 상태가 뚜렷하게 */
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label {
-            background: #202B27 !important;
-            border-color: #819A75 !important;
-            min-height: 52px;
-        }
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label p,
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label span {
-            color: #F0F6EE !important;
-            opacity: 1 !important;
-            font-weight: 800 !important;
-        }
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
-            background: #B7E66B !important;
-            border-color: #B7E66B !important;
-        }
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p,
-        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) span {
-            color: #101417 !important;
-        }
-
-        /* 24) 탭, 펼침 상자, 표 및 코드 결과 */
-        [data-testid="stTabs"] button,
-        [data-testid="stTabs"] button p,
-        [data-testid="stExpander"] summary,
-        [data-testid="stExpander"] summary * {
-            color: #E9EDE7 !important;
-            opacity: 1 !important;
-            font-weight: 800 !important;
-        }
-        [data-testid="stTabs"] button[aria-selected="true"],
-        [data-testid="stTabs"] button[aria-selected="true"] p {
-            color: #B7E66B !important;
-        }
-        [data-testid="stDataFrame"], [data-testid="stTable"] {
-            color: #E9EDE7;
-        }
-        .bt-box, .bt-card, .bt-step-text, .bt-flow-text {
-            color: #E9EDE7 !important;
-            opacity: 1 !important;
-        }
-
-        /* 25) 모바일에서 버튼과 메뉴를 작게 줄이지 않음 */
-        @media (max-width: 800px) {
-            div.stButton > button { min-height: 52px; }
-            div[data-testid="stRadio"] > div[role="radiogroup"] > label {
-                min-height: 48px;
-                min-width: 88px;
-            }
-        }
-
-
-/* BUG TRACE: warm beige CRT research lab, high contrast override */
-:root {
- --bt-bg:#F5F0E4; --bt-panel:#FFFCF5; --bt-line:#B7BEA6;
- --bt-text:#233529; --bt-dim:#4D5E50; --bt-lime:#D7EAA4;
- --bt-lime-soft:#EDF5D8; --bt-lime-line:#72944F;
- --bt-glow:0 4px 15px rgba(63,80,43,.12);
- --bt-red:#A94135; --bt-yellow:#80610E; --bt-sky:#285C86;
-}
-html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] { background:#F5F0E4 !important; color:#233529 !important; }
-[data-testid="stHeader"], header[data-testid="stHeader"], [data-testid="stTopNav"], [data-testid="stNavigation"], [data-testid="stTopNav"] nav, [data-testid="stNavigation"] nav { background:#E9E0CD !important; color:#233529 !important; border-bottom:1px solid #ACB49C !important; }
-[data-testid="stTopNav"] a, [data-testid="stTopNav"] button, [data-testid="stNavigation"] a, [data-testid="stNavigation"] button, header[data-testid="stHeader"] a,
-[data-testid="stTopNav"] a *, [data-testid="stTopNav"] button *, [data-testid="stNavigation"] a *, [data-testid="stNavigation"] button * {
- color:#24382A !important; opacity:1 !important; -webkit-text-fill-color:#24382A !important; font-size:16px !important; font-weight:800 !important;
-}
-[data-testid="stTopNav"] a[aria-current="page"], [data-testid="stNavigation"] a[aria-current="page"], [data-testid="stTopNav"] a[aria-selected="true"], [data-testid="stNavigation"] a[aria-selected="true"] { background:#C9DE91 !important; border-radius:9px; }
-[data-testid="stTopNav"] a:hover, [data-testid="stNavigation"] a:hover {background:#D8E8B9 !important;}
-[data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li, [data-testid="stWidgetLabel"] p,
-[data-testid="stCaptionContainer"] p, [data-testid="stHelperText"] p, [data-testid="stMetricLabel"] p {color:#344839 !important;opacity:1 !important; -webkit-text-fill-color:initial !important;}
-[data-testid="stCaptionContainer"] p {font-size:14px !important;}
-.bt-header {border-bottom:2px solid #B7BEA6;}
-.bt-title,.bt-card-title {color:#203A28 !important;}
-.bt-desc,.bt-card-summary,.bt-step-text,.bt-flow-text {color:#435448 !important;}
-.bt-card-tech,.bt-no,.bt-tag,.bt-flow-name,.bt-flow-box .bt-icon,.bt-title .bt-icon,.bt-badge-on {color:#406A2D !important;}
-.bt-card,.bt-box {background:#FFFCF5 !important;color:#233529 !important;border-color:#B7BEA6 !important;box-shadow:0 2px 9px rgba(35,53,41,.06);}
-.bt-box-label {font-weight:800;}
-.bt-ok .bt-box-label,.bt-basis-ok {color:#406A2D !important;}
-.bt-err .bt-box-label,.bt-flow-out .bt-flow-name {color:#A94135 !important;}
-.bt-key .bt-box-label,.bt-basis-guess {color:#80610E !important;}
-.bt-obs .bt-box-label {color:#285C86 !important;}
-.bt-flow-box {background:#EEF5DA !important; border-color:#85A661 !important;box-shadow:none !important;}
-.bt-flow-out {background:#FFF0E8 !important;border-color:#BD7D68 !important;}
-.bt-step-no {background:#DFECC2 !important;color:#335D2C !important;}
-.bt-arrow,.bt-flow-arrow {color:#557E38 !important;}
-.bt-badge,.bt-tag,.bt-basis {background:#F4F5E9 !important;border-color:#B5C4A4 !important;color:#3B5D35 !important;}
-[data-testid="stVerticalBlockBorderWrapper"] {background:#FFFCF5 !important;border-color:#C4C8B5 !important;box-shadow:0 3px 14px rgba(45,58,37,.06);}
-div.stButton > button,div.stButton > button *,div[data-testid="stPageLink"] a,div[data-testid="stPageLink"] a * {
- color:#233529 !important; -webkit-text-fill-color:#233529 !important; background:#E9EEDB !important;
- border-color:#879D75 !important;opacity:1 !important;font-weight:800 !important;
-}
-div.stButton > button,div[data-testid="stPageLink"] a {min-height:54px !important; border-radius:10px !important; font-size:17px !important;}
-div.stButton > button:hover,div[data-testid="stPageLink"] a:hover {background:#D8E7B8 !important;border-color:#527D39 !important;}
-div.stButton > button[kind="primary"],div.stButton > button[kind="primary"] *,div.stButton > button[data-testid="stBaseButton-primary"],div.stButton > button[data-testid="stBaseButton-primary"] * {background:#C9E28E !important;color:#1E3022 !important;-webkit-text-fill-color:#1E3022 !important;}
-div[data-testid="stRadio"] > div[role="radiogroup"] > label {background:#FFFDF5 !important;border:2px solid #9DAE8D !important;min-height:52px !important;min-width:94px !important;border-radius:10px !important;}
-div[data-testid="stRadio"] > div[role="radiogroup"] > label p,div[data-testid="stRadio"] > div[role="radiogroup"] > label span {color:#24382A !important;-webkit-text-fill-color:#24382A !important;font-size:16px !important;font-weight:800 !important;}
-div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {background:#C9E28E !important;border-color:#557E38 !important;box-shadow:inset 0 0 0 1px #557E38;}
-div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p,div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) span {color:#1E3022 !important;}
-div[data-baseweb="input"] > div,div[data-baseweb="select"] > div, [data-testid="stDateInput"] [data-baseweb="input"] > div,[data-testid="stTimeInput"] [data-baseweb="input"] > div {background:#FFFFFF !important;border:1.5px solid #A2B19A !important;min-height:52px !important;}
-div[data-baseweb="input"] input,div[data-baseweb="select"] input,div[data-baseweb="select"] [role="combobox"],div[data-baseweb="select"] [role="combobox"] *,[data-testid="stDateInput"] input,[data-testid="stTimeInput"] input,textarea {color:#22372A !important;-webkit-text-fill-color:#22372A !important;font-size:16px !important;font-weight:700 !important;}
-input::placeholder,textarea::placeholder {color:#637568 !important;-webkit-text-fill-color:#637568 !important;}
-[data-baseweb="popover"],[data-baseweb="popover"] [role="option"], [data-baseweb="popover"] [role="option"] * {background:#FFFFFF !important;color:#233529 !important;-webkit-text-fill-color:#233529 !important;}
-[data-testid="stTabs"] button,[data-testid="stTabs"] button p,[data-testid="stExpander"] summary,[data-testid="stExpander"] summary * {color:#29412F !important;font-weight:800 !important;}
-[data-testid="stTabs"] button[aria-selected="true"],[data-testid="stTabs"] button[aria-selected="true"] p {color:#386F2B !important;}
-.stMarkdown a {color:#386F2B !important;text-decoration:underline;}
-hr {border-color:#B7BEA6 !important;}
-@media(max-width:800px){.block-container{padding:4.5rem 1rem 3rem !important;} .bt-card{min-height:0;}}
-
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
         </style>
     """)
-
-    render_html('\n        <style>\n        /* Retro OS window: readable interior pages, consistent with CRT home */\n        [data-testid="stAppViewContainer"] {background: #eae4d4!important;color:#203b29!important;}\n        .block-container {max-width:1250px;padding-top:4.6rem;}\n        .bt-header {background:#f9f7e9;border:2px solid #8c9f7b;border-radius:12px;padding:20px 24px;margin-bottom:22px;box-shadow:5px 5px 0 #c6cbb1;}\n        .bt-title {font-size:clamp(1.7rem,2.8vw,2.35rem)!important;color:#1c4027!important;}\n        .bt-card {background:#fffdf5!important;border:0!important;box-shadow:none!important;padding:0!important;min-height:0!important;}\n        .bt-card-title {font-family:\'Noto Sans KR\',sans-serif!important;font-size:1.25rem!important;line-height:1.55!important;word-break:keep-all!important;}\n        .bt-card-summary {font-size:1rem!important;line-height:1.8!important;word-break:keep-all!important;}\n        .bt-card-tech {font-size:.94rem!important;}\n        div[data-testid="stVerticalBlockBorderWrapper"] {background:#fffdf5!important;border:1.5px solid #a6b296!important;border-radius:13px!important;padding:3px;}\n        div.stButton>button {border:1.5px solid #78906c!important;background:#e9efdb!important;color:#203c2a!important;border-radius:8px!important;min-height:47px!important;box-shadow:0 3px 0 #a5b294!important;}\n        div.stButton>button *,div.stButton>button p {color:#203c2a!important;font-size:1rem!important;}\n        div.stButton>button:hover {background:#d7edaa!important;}\n        div.stButton>button[kind="primary"] {background:#c6f344!important;}\n        div[data-baseweb="input"]>div,div[data-baseweb="select"]>div {background:#fffef6!important;border:1.5px solid #8c9f7b!important;}\n        div[data-baseweb="input"] input,div[data-baseweb="select"] input,[data-testid="stDateInput"] input,[data-testid="stTimeInput"] input,textarea {color:#1b3824!important;-webkit-text-fill-color:#1b3824!important;}\n        div[data-testid="stRadio"]>div[role="radiogroup"]>label {background:#faf8eb!important;border:1.5px solid #9bac8b!important;border-radius:8px!important;min-height:48px!important;}\n        div[data-testid="stRadio"]>div[role="radiogroup"]>label p,div[data-testid="stRadio"]>div[role="radiogroup"]>label span {color:#23412c!important;font-weight:800!important;}\n        div[data-testid="stRadio"]>div[role="radiogroup"]>label:has(input:checked) {background:#c6f344!important;border-color:#547d3a!important;}\n        [data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li {color:#273d2c!important;}\n        .bt-box,.bt-step-text,.bt-flow-text {color:#263d2d!important;}\n        .bt-box {background:#fffdf5!important;}\n        .bt-no,.bt-tag {color:#315c39!important;}\n        .bt-tag {background:#edf2e2!important;}\n        [data-testid="stTopNav"] a,[data-testid="stTopNav"] a * {color:#25402d!important;font-size:1rem!important;font-weight:800!important;}\n        </style>\n')

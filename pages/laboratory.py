@@ -10,11 +10,11 @@ from datetime import date, datetime, time, timezone   # 날짜, 날짜+시각, �
 from decimal import Decimal                      # 10진수를 정확하게 계산하는 자료형
 from zoneinfo import ZoneInfo                    # 지역 이름으로 시간대를 정하는 도구 (서머타임 자동 반영)
 
-import altair as alt
-import pandas as pd
+import altair as alt                             # 그래프를 그리는 라이브러리
+import pandas as pd                              # 표 형태의 데이터를 다루는 라이브러리
 import streamlit as st
 
-from common import open_case, page_header
+from common import crt_frame, open_case, page_banner
 
 # 실험 목록: "실험 이름표": ("화면에 보일 이름", 관련 오류 번호)
 LABS = {
@@ -53,8 +53,9 @@ def show_lab_selector():
         "실험 선택",
         list(LABS.keys()),
         key="lab_topic",
-        format_func=lambda lab: LABS[lab][0],     # 이름표 대신 화면용 이름을 보여 준다
+        format_func=lambda lab: f"🧪 {LABS[lab][0]}  (BUG-{LABS[lab][1]:03d})",   # 화면용 이름 + 관련 오류 번호
         on_change=save_lab,
+        label_visibility="collapsed",
     )
 
 
@@ -67,7 +68,7 @@ def run_button(key):
 def show_case_link(lab):
     """실험과 관련된 오류의 원인 해부실로 가는 버튼"""
     case_id = LABS[lab][1]
-    if st.button(f"📖 CASE {case_id:02d} 원인 설명 보러 가기", key=f"lab_link_{lab}"):
+    if st.button(f"BUG-{case_id:03d} 원인 보기", key=f"lab_link_{lab}", icon=":material/menu_book:", width="stretch"):
         open_case(case_id)
 
 
@@ -82,15 +83,17 @@ def to_hex(data):
 
 def run_float_lab():
     """두 소수를 더해서 컴퓨터 계산 결과와 정확한 값을 비교한다."""
-    st.markdown("#### 🧪 0.1 + 0.2는 정말 0.3일까?")
-    first_column, second_column = st.columns(2)
-    first_text = first_column.text_input("첫 번째 수", "0.1", key="float_first")
-    second_text = second_column.text_input("두 번째 수", "0.2", key="float_second")
-
-    if run_button("float_run"):
-        show_float_result(first_text.strip(), second_text.strip())
-
-    show_float_error_chart()
+    # 왼쪽: 계산 실험 / 오른쪽: 오차가 쌓이는 그래프 → 한 화면에 나란히 보여 준다
+    calc_column, chart_column = st.columns(2)
+    with calc_column:
+        st.markdown("#### 🧪 0.1 + 0.2는 정말 0.3일까?")
+        first_column, second_column = st.columns(2)
+        first_text = first_column.text_input("첫 번째 수", "0.1", key="float_first")
+        second_text = second_column.text_input("두 번째 수", "0.2", key="float_second")
+        if run_button("float_run"):
+            show_float_result(first_text.strip(), second_text.strip())
+    with chart_column:
+        show_float_error_chart()
 
 
 def show_float_result(first_text, second_text):
@@ -138,12 +141,18 @@ def show_float_error_chart():
     # 가로축: 더한 횟수, 세로축: 오차
     chart_data = pd.DataFrame({"오차": errors}, index=range(1, repeat_count + 1))
     plot_data = chart_data.reset_index().rename(columns={"index": "더한 횟수"})
-    chart = alt.Chart(plot_data).mark_line(color="#B15C3A", strokeWidth=3).encode(
+    # Altair 꺾은선 그래프(mark_line): 더한 횟수가 늘수록 오차가 어떻게 변하는지 보여 준다.
+    chart = alt.Chart(plot_data).mark_line(color="#A23A2E", strokeWidth=3).encode(
         x=alt.X("더한 횟수:Q", title="0.1을 더한 횟수"),
         y=alt.Y("오차:Q", title="절대 오차"),
         tooltip=["더한 횟수:Q", alt.Tooltip("오차:Q", format=".12g")],
-    ).properties(height=300)
-    st.altair_chart(chart, width="stretch")
+    ).properties(height=230)
+    # 배경을 투명하게, 축 글자는 진한 초록으로 → 모니터 화면과 어울리게
+    chart = chart.configure(background="transparent").configure_axis(
+        labelColor="#1E3322", titleColor="#1F4D25", gridColor="#C9D9A6", domainColor="#1F4D25",
+    )
+    # use_container_width=True: 그래프를 화면 너비에 맞춘다. (Streamlit 1.50에서 쓰는 방법)
+    st.altair_chart(chart, use_container_width=True)
     st.caption(f"0.1을 {repeat_count}번 더한 결과: {total!r} (정확한 값: {Decimal(repeat_count) / Decimal(10)})")
 
 
@@ -308,12 +317,7 @@ def run_timezone_lab():
 
 
 # ----- 실제 실행 순서 -----
-page_header("science", "현상 실험실", "직접 실행하며 컴퓨터의 처리 원리를 확인합니다.")
-show_lab_selector()                       # 1) 실험 고르기
-
-selected_lab = st.session_state["lab_topic"]
-
-# 2) 고른 실험에 맞는 함수를 실행한다. (딕셔너리: 이름표 → 함수)
+# 고른 실험에 맞는 함수를 실행하기 위한 표 (딕셔너리: 이름표 → 함수)
 lab_functions = {
     "float": run_float_lab,
     "sort": run_sort_lab,
@@ -321,8 +325,14 @@ lab_functions = {
     "encoding": run_encoding_lab,
     "timezone": run_timezone_lab,
 }
-with st.container(border=True):           # 실험 내용을 테두리 상자(실험대) 안에 담는다
-    lab_functions[selected_lab]()
 
-st.divider()
-show_case_link(selected_lab)              # 3) 관련 오류 설명으로 가기
+with crt_frame("pages/laboratory.py", "LAB"):
+    page_banner("science", "PHENOMENON LAB", "현상 실험실", "직접 실행하며 컴퓨터의 처리 원리를 확인합니다.")
+    selector_column, link_column = st.columns([3, 1])      # 1) 실험 고르기 + 관련 오류로 가기 버튼을 한 줄에
+    with selector_column:
+        show_lab_selector()
+    selected_lab = st.session_state["lab_topic"]
+    with link_column:
+        show_case_link(selected_lab)
+    with st.container(border=True):                        # 2) 실험 내용을 테두리 상자(실험대) 안에 담는다
+        lab_functions[selected_lab]()

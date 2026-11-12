@@ -1,17 +1,13 @@
 # =============================================================
 # streamlit_app.py  (시작 파일)
 # BUG TRACE 웹앱이 실행되면 가장 먼저 이 파일이 실행된다.
-# 하는 일: 기본 설정 → 공통 디자인 적용 → 로고 → 위쪽 메뉴 바 만들기 → 선택한 페이지 실행
+# 하는 일: 기본 설정 → 공통 디자인 → 페이지 목록 등록 → 선택한 페이지 실행
+# (메뉴는 각 페이지의 CRT 모니터 화면 안에 있다. → common.py의 crt_frame)
 # =============================================================
-
-from pathlib import Path
 
 import streamlit as st
 
-from common import apply_style   # 공통 디자인(CSS)을 넣는 함수
-
-# 로고 그림 파일 위치 (">_ BUG TRACE" 글자 그림)
-LOGO_PATH = Path(__file__).parent / "assets" / "logo.svg"
+from common import apply_style   # 공통 디자인(CSS)
 
 
 def setup_page():
@@ -40,9 +36,8 @@ def create_pages():
 # ----- 실제 실행 순서 -----
 setup_page()                              # 1) 기본 설정
 apply_style()                             # 2) 모든 페이지에 공통 디자인 적용
-st.logo(str(LOGO_PATH), size="large")     # 3) 왼쪽 위 로고
 
-# 4) 메뉴를 화면 위쪽(position="top")에 가로로 만든다.
-#    좁은 화면(휴대폰)에서는 자동으로 ☰ 메뉴 버튼으로 바뀐다.
-current_page = st.navigation(create_pages(), position="top")
-current_page.run()                        # 5) 고른 페이지의 코드를 실행한다
+# 3) 페이지를 등록한다. position="hidden": Streamlit 기본 메뉴는 숨기고,
+#    모니터 화면 안의 메뉴 버튼(st.page_link)으로 이동한다.
+current_page = st.navigation(create_pages(), position="hidden")
+current_page.run()                        # 4) 고른 페이지의 코드를 실행한다
