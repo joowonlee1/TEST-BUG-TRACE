@@ -103,17 +103,35 @@ def to_hex(data):
 
 def run_float_lab():
     """두 소수를 더해서 컴퓨터 계산 결과와 정확한 값을 비교한다."""
-    # 왼쪽: 계산 실험 / 오른쪽: 오차가 쌓이는 그래프 → 한 화면에 나란히 보여 준다
-    calc_column, chart_column = st.columns(2)
-    with calc_column:
-        st.markdown("#### 🧪 0.1 + 0.2는 정말 0.3일까?")
-        first_column, second_column = st.columns(2)
-        first_text = first_column.text_input("첫 번째 수", "0.1", key="float_first")
-        second_text = second_column.text_input("두 번째 수", "0.2", key="float_second")
+    st.markdown("#### 🧪 0.1 + 0.2는 정말 0.3일까?")
+    # 1줄: 첫 번째 수 | 두 번째 수 | 실행 버튼 (vertical_alignment="bottom": 버튼을 입력칸 아래쪽 선에 맞춘다)
+    first_column, second_column, run_column = st.columns([2, 2, 1.6], vertical_alignment="bottom")
+    first_text = first_column.text_input("첫 번째 수", "0.1", key="float_first")
+    second_text = second_column.text_input("두 번째 수", "0.2", key="float_second")
+    with run_column:
         if run_button("float_run"):
+            # 한 번 실행했다는 것을 기억 → 슬라이더를 움직여 화면이 다시 그려져도 결과가 사라지지 않는다
+            st.session_state["float_ran"] = True
+
+    # 2줄: 왼쪽 계산 결과 | 오른쪽 오차 그래프 (두 칸 크기를 맞춰서 한쪽만 비어 보이지 않게)
+    result_column, chart_column = st.columns(2)
+    with result_column:
+        if st.session_state.get("float_ran", False):
             show_float_result(first_text.strip(), second_text.strip())
+        else:
+            show_waiting()
     with chart_column:
         show_float_error_chart()
+
+
+def show_waiting():
+    """아직 실행하기 전: 결과가 나올 자리에 안내 상자를 보여 준다."""
+    render_html("""
+        <div class="lab-waiting">
+            <div class="lab-waiting-icon">▶</div>
+            <div>위의 <b>실험 실행하기</b>를 누르면<br>컴퓨터 계산 결과와 실제로 저장된 값이 여기에 나와요.</div>
+        </div>
+    """)
 
 
 def show_float_result(first_text, second_text):
@@ -147,8 +165,7 @@ def show_float_result(first_text, second_text):
 
 def show_float_error_chart():
     """0.1을 여러 번 더할수록 오차가 어떻게 쌓이는지 그래프로 보여 준다."""
-    st.markdown("#### 📈 0.1을 계속 더하면 오차는 어떻게 될까?")
-    repeat_count = st.slider("0.1을 더하는 횟수", 10, 1000, 100, step=10)
+    repeat_count = st.slider("📈 0.1을 계속 더하면 오차는? (더하는 횟수)", 10, 1000, 100, step=10)
 
     total = 0.0
     errors = []
@@ -164,7 +181,7 @@ def show_float_error_chart():
 
 def draw_line_chart(values):
     """값 목록을 꺾은선 그래프(SVG 그림)로 직접 그린다. 가로축 = 더한 횟수, 세로축 = 오차"""
-    width, height, margin = 600, 240, 30          # 그림 크기와 안쪽 여백(px)
+    width, height, margin = 600, 220, 30          # 그림 크기와 안쪽 여백(px)
     largest = max(values) or 1                    # 가장 큰 오차 (0이면 나눗셈을 못 하니 1로)
     last_index = len(values) - 1
 

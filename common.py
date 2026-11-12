@@ -451,6 +451,10 @@ def apply_style():
         [data-testid="stTabs"] button p { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; font-size: 1rem !important; color: var(--ink) !important; }
         /* 현상 실험실 꺾은선 그래프(SVG) */
         .lab-chart { width: 100%; height: auto; margin-bottom: 14px; background: var(--paper); border: 3px solid var(--ink); font-family: 'Noto Sans KR', sans-serif; }
+        /* 실험 실행 전, 결과가 나올 자리의 안내 상자 (점선 테두리) */
+        .lab-waiting { border: 3px dashed var(--ink); background: rgba(251, 253, 241, .6); color: var(--ink); text-align: center;
+                       padding: 40px 16px; line-height: 1.8; font-size: 0.98rem; min-height: 330px; display: flex; flex-direction: column; justify-content: center; }
+        .lab-waiting-icon { font-family: 'Press Start 2P', monospace; font-size: 1.8rem; margin-bottom: 8px; animation: blink 1.2s steps(1) infinite; }
         .stMarkdown a { color: #2F6B2A; text-decoration: underline; font-weight: 600; }
         hr { border-color: var(--ink) !important; opacity: .3; margin: 0.4rem 0 !important; }
 
