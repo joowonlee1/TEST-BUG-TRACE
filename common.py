@@ -333,5 +333,170 @@ def apply_style():
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
         }
+
+        /* 19) 접근성 및 가독성: 전체 화면의 흐릿한 글씨 보정 */
+        [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+            color: #E9EDE7;
+        }
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stMarkdownContainer"] li,
+        [data-testid="stWidgetLabel"] p {
+            color: #E9EDE7;
+            opacity: 1 !important;
+        }
+        [data-testid="stCaptionContainer"] p,
+        [data-testid="stHelperText"] p,
+        [data-testid="stMetricLabel"] p {
+            color: #CBD8CE !important;
+            opacity: 1 !important;
+            font-size: 0.93rem !important;
+        }
+
+        /* 20) Streamlit 상단 내비게이션: 선택되지 않은 메뉴도 밝게 */
+        [data-testid="stNavigation"],
+        [data-testid="stTopNav"],
+        [data-testid="stTopNav"] nav,
+        [data-testid="stNavigation"] nav {
+            background: #101714 !important;
+        }
+        [data-testid="stTopNav"] a,
+        [data-testid="stTopNav"] button,
+        [data-testid="stNavigation"] a,
+        [data-testid="stNavigation"] button,
+        header[data-testid="stHeader"] a {
+            color: #E9EDE7 !important;
+            opacity: 1 !important;
+            font-family: 'Noto Sans KR', sans-serif !important;
+            font-size: 1.05rem !important;
+            font-weight: 800 !important;
+            min-height: 48px;
+        }
+        [data-testid="stTopNav"] a *,
+        [data-testid="stTopNav"] button *,
+        [data-testid="stNavigation"] a *,
+        [data-testid="stNavigation"] button * {
+            color: inherit !important;
+            opacity: 1 !important;
+            font-weight: 800 !important;
+        }
+        [data-testid="stTopNav"] a[aria-current="page"],
+        [data-testid="stNavigation"] a[aria-current="page"],
+        [data-testid="stTopNav"] a[aria-selected="true"],
+        [data-testid="stNavigation"] a[aria-selected="true"] {
+            background: #B7E66B !important;
+            color: #101417 !important;
+            border-radius: 10px;
+        }
+        [data-testid="stTopNav"] a:hover,
+        [data-testid="stNavigation"] a:hover {
+            background: #2B3A30;
+            color: #FFFFFF !important;
+            border-radius: 10px;
+        }
+
+        /* 21) 버튼: Streamlit 내부 텍스트까지 색상 지정 */
+        div.stButton > button,
+        div.stButton > button *,
+        div[data-testid="stPageLink"] a,
+        div[data-testid="stPageLink"] a * {
+            color: #F4F8F0 !important;
+            opacity: 1 !important;
+            font-weight: 800 !important;
+        }
+        div.stButton > button[kind="primary"],
+        div.stButton > button[kind="primary"] *,
+        div.stButton > button[data-testid="stBaseButton-primary"],
+        div.stButton > button[data-testid="stBaseButton-primary"] * {
+            color: #101417 !important;
+            background-color: #B7E66B;
+        }
+        div.stButton > button:disabled,
+        div.stButton > button:disabled * {
+            color: #C3CEC4 !important;
+            opacity: 1 !important;
+        }
+
+        /* 22) 입력창: 날짜·시간·검색·선택 메뉴의 값과 안내문 */
+        div[data-baseweb="input"] input,
+        div[data-baseweb="select"] input,
+        div[data-baseweb="select"] [role="combobox"],
+        div[data-baseweb="select"] [role="combobox"] *,
+        [data-testid="stDateInput"] input,
+        [data-testid="stTimeInput"] input,
+        textarea {
+            color: #F2F6F0 !important;
+            -webkit-text-fill-color: #F2F6F0 !important;
+            font-family: 'Noto Sans KR', sans-serif !important;
+            font-size: 1.04rem !important;
+            font-weight: 700 !important;
+            opacity: 1 !important;
+        }
+        input::placeholder, textarea::placeholder {
+            color: #BAC9BC !important;
+            -webkit-text-fill-color: #BAC9BC !important;
+            opacity: 1 !important;
+        }
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="select"] > div {
+            background: #202B28 !important;
+            border: 1.5px solid #758D76 !important;
+        }
+        [data-baseweb="popover"] [role="option"],
+        [data-baseweb="popover"] [role="option"] * {
+            color: #E9EDE7 !important;
+            font-size: 1rem !important;
+            font-weight: 700 !important;
+        }
+
+        /* 23) 분류 필터: 모든 칩이 읽히고 선택 상태가 뚜렷하게 */
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+            background: #202B27 !important;
+            border-color: #819A75 !important;
+            min-height: 52px;
+        }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label p,
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label span {
+            color: #F0F6EE !important;
+            opacity: 1 !important;
+            font-weight: 800 !important;
+        }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
+            background: #B7E66B !important;
+            border-color: #B7E66B !important;
+        }
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p,
+        div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) span {
+            color: #101417 !important;
+        }
+
+        /* 24) 탭, 펼침 상자, 표 및 코드 결과 */
+        [data-testid="stTabs"] button,
+        [data-testid="stTabs"] button p,
+        [data-testid="stExpander"] summary,
+        [data-testid="stExpander"] summary * {
+            color: #E9EDE7 !important;
+            opacity: 1 !important;
+            font-weight: 800 !important;
+        }
+        [data-testid="stTabs"] button[aria-selected="true"],
+        [data-testid="stTabs"] button[aria-selected="true"] p {
+            color: #B7E66B !important;
+        }
+        [data-testid="stDataFrame"], [data-testid="stTable"] {
+            color: #E9EDE7;
+        }
+        .bt-box, .bt-card, .bt-step-text, .bt-flow-text {
+            color: #E9EDE7 !important;
+            opacity: 1 !important;
+        }
+
+        /* 25) 모바일에서 버튼과 메뉴를 작게 줄이지 않음 */
+        @media (max-width: 800px) {
+            div.stButton > button { min-height: 52px; }
+            div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+                min-height: 48px;
+                min-width: 88px;
+            }
+        }
         </style>
     """)
