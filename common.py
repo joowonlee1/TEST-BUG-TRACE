@@ -23,35 +23,29 @@ import streamlit as st                       # 웹앱을 만드는 라이브러�
 # 즉 "common.py와 같은 폴더 안의 data/cases.json"을 가리킨다.
 DATA_PATH = Path(__file__).parent / "data" / "cases.json"
 
-# 오류 분류 목록 (오류 도감의 분류 버튼, 막대그래프에 사용)
-CATEGORIES = ["입력", "숫자", "문자", "이미지", "파일", "화면", "시간"]
+# 오류 분류 목록 (오류 도감의 분류 버튼에 사용)
+# 순서 = 탐구 흐름: 숫자(정수 → 실수)를 비트로 저장하는 방식 → 글자를 숫자로 저장하는 방식 → 한글 입력
+CATEGORIES = ["숫자", "문자", "입력"]
 
 # 분류마다 붙일 아이콘 (Streamlit이 제공하는 Material 아이콘 이름)
 CATEGORY_ICONS = {
     "전체": "layers",
-    "입력": "keyboard",
     "숫자": "calculate",
     "문자": "text_fields",
-    "이미지": "image",
-    "파일": "folder",
-    "화면": "desktop_windows",
-    "시간": "schedule",
+    "입력": "keyboard",
 }
 
 # 원인 유형 이름과 설명 (딕셔너리: "이름": "설명")
-# 오류 비교실과 오류 도감의 그래프에서 사용한다.
+# 오류 비교실에서 두 오류의 원인을 묶고 비교할 때 사용한다.
 CAUSE_TYPES = {
-    "상태 불일치": "두 곳이 기억하는 정보가 서로 달라서 생기는 오류",
-    "표현의 한계": "컴퓨터가 정보를 완벽하게 저장할 수 없어서 생기는 오류",
+    "표현의 한계": "정해진 칸 수(비트)로는 정보를 완벽하게 저장할 수 없어서 생기는 오류",
     "규칙 불일치": "저장할 때와 읽을 때 쓰는 규칙이 달라서 생기는 오류",
-    "보이지 않는 정보": "화면에 안 보이는 정보 때문에 생기는 오류",
-    "자동 해석": "컴퓨터가 데이터의 종류를 스스로 짐작하다가 생기는 오류",
-    "환경 차이": "기기나 지역 같은 환경이 달라서 생기는 오류",
+    "상태 불일치": "두 곳이 기억하는 정보가 서로 달라서 생기는 오류",
 }
 
 # 모니터 화면 위쪽 메뉴: (페이지 파일, 메뉴 이름, 아이콘)
+# 첫 화면(홈)으로는 창의 × 버튼과 전원 버튼으로 돌아가므로 메뉴에는 넣지 않는다.
 NAV_PAGES = [
-    ("pages/home.py", "홈", ":material/home:"),
     ("pages/catalog.py", "오류 도감", ":material/menu_book:"),
     ("pages/anatomy.py", "원인 해부실", ":material/layers:"),
     ("pages/laboratory.py", "현상 실험실", ":material/science:"),
@@ -111,6 +105,9 @@ def case_label(case):
     return f"BUG-{case['id']:03d} · {case['title']}"
 
 
+# 공통 데이터 검색 로직: 각 페이지의 UI 코드와 독립적으로 동작한다.
+# 제목·기술·요약·증상·키워드 중 검색어가 포함된 사례만 반환한다.
+
 def search_cases(cases, keyword, category):
     """검색어(keyword)와 분류(category)로 오류 목록을 걸러 낸다."""
     # 앞뒤 공백을 지우고 소문자로 바꿔서 "IME"와 "ime"를 같은 검색어로 본다.
@@ -122,10 +119,11 @@ def search_cases(cases, keyword, category):
         if category != "전체" and case["category"] != category:
             continue
 
-        # 조건 2) 검색어: 제목, 쉬운 이름, 기술, 요약, 증상, 키워드를 한 문장으로 합친 뒤 검색한다.
+        # 조건 2) 검색어: 제목, 쉬운 이름, 기술, 요약, 증상, 키워드, 용어 이름을 한 문장으로 합친 뒤 검색한다.
+        term_names = [term["term"] for term in case["terms"]]
         searchable_text = " ".join(
             [case["title"], case["nickname"], case["tech"], case["summary"], case["symptom"]]
-            + case["keywords"]
+            + case["keywords"] + term_names
         ).lower()
 
         # 검색어가 비어 있으면 ""는 모든 글자 안에 있으므로 전부 통과한다.
@@ -196,7 +194,7 @@ def show_window_bar(english_name):
         render_html(f"""
             <div class="win-bar">
                 <div class="win-logo">{PIXEL_COMPUTER_SVG}<span class="win-title">BUG TRACE</span></div>
-                <div class="win-path">C:\\BUG_TRACE\\{escape(english_name)}&gt;<span class="win-cursor"></span></div>
+                <div class="win-path">C:\\BUG_TRACE\\{escape(english_name)}&gt;</div>
             </div>
         """)
     with button_column:
@@ -204,7 +202,7 @@ def show_window_bar(english_name):
 
 
 def show_nav(current_page):
-    """창 제목 줄 아래에 5개 페이지로 가는 메뉴 버튼을 놓는다. 지금 페이지는 라임색으로 강조한다."""
+    """창 제목 줄 아래에 4개 페이지로 가는 메뉴 버튼을 놓는다. 지금 페이지는 라임색으로 강조한다."""
     columns = st.columns(len(NAV_PAGES))
     for number, (column, (page_file, name, icon_name)) in enumerate(zip(columns, NAV_PAGES)):
         with column:
@@ -248,13 +246,14 @@ def crt_frame(current_page, english_name):
     # 최대화 중이면 바깥 틀 이름을 "crt_max"로 바꿔서 CSS로 틀을 얇게, 아래 패널은 숨긴다.
     with st.container(key="crt_max" if is_max else "crt"):     # 모니터 바깥 틀 (베이지 플라스틱)
         with st.container(key="crt_screen"):                    # 모니터 화면 (연두빛 형광 화면)
-            show_window_bar(english_name)                      # 1) 창 제목 줄 (+ 진짜 창 버튼)
+            show_window_bar(english_name)                      # 1) 창 제목 줄 (+ 진짜 창 버튼) → 화면 위에 고정
+            show_nav(current_page)                             # 2) 메뉴 버튼 → 화면 위에 고정
             if is_min:
                 render_html('<div class="win-min-note">▁ 창이 최소화되어 있어요. 오른쪽 위 <b>—</b> 버튼을 다시 누르면 펼쳐져요.</div>')
-            # 최소화 중이면 내용 상자 이름을 "win_hidden"으로 바꿔서 CSS로 숨긴다. (코드는 그대로 실행됨)
+            # 3) 페이지 내용 상자: 높이를 정해 두고(CSS) 이 상자 안에서만 스크롤된다. → 모니터는 움직이지 않는다
+            #    최소화 중이면 상자 이름을 "win_hidden"으로 바꿔서 CSS로 숨긴다. (코드는 그대로 실행됨)
             with st.container(key="win_hidden" if is_min else "win_body"):
-                show_nav(current_page)                         # 2) 메뉴 버튼
-                yield                                          # 3) ← 여기에 각 페이지의 내용이 들어간다
+                yield                                          # ← 여기에 각 페이지의 내용이 들어간다
         if not is_max:
             show_monitor_panel()                               # 4) 모니터 아래쪽 (최대화 중에는 숨김)
 
@@ -322,7 +321,7 @@ def apply_style():
 
         /* ===== 4) 글꼴 ===== */
         .stMarkdown p, .stMarkdown li, [data-testid="stWidgetLabel"] p {
-            font-family: 'Noto Sans KR', sans-serif; font-size: 0.97rem; line-height: 1.65; color: var(--text);
+            font-family: 'Noto Sans KR', sans-serif; font-size: 1.02rem; line-height: 1.75; color: var(--text);
         }
         [data-testid="stCaptionContainer"] p { color: var(--dim); font-size: 0.88rem; }
         /* 글꼴 나누기: 픽셀 글꼴(Galmuri)은 버튼·배너·이름표 같은 '짧은 글자'에만 쓰고,
@@ -362,7 +361,6 @@ def apply_style():
         .win-logo .px-computer { width: 64px; height: auto; }
         .win-title { font-family: 'Press Start 2P', monospace; font-size: 1.55rem; color: var(--ink); letter-spacing: 1px; }
         .win-path { flex: 1; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); font-size: 0.95rem; text-align: right; }
-        .win-cursor { display: inline-block; width: 9px; height: 1em; margin-left: 4px; background: var(--ink); vertical-align: -2px; animation: blink 1s steps(1) infinite; }
         /* 진짜 창 버튼(— □ ×): 작은 정사각형 픽셀 버튼, 오른쪽 끝에 붙인다 */
         .st-key-win_btns { justify-content: flex-end; gap: 4px; }
         .st-key-win_btns div.stButton { padding-top: 0; }
@@ -454,7 +452,7 @@ def apply_style():
         /* 실험 실행 전, 결과가 나올 자리의 안내 상자 (점선 테두리) */
         .lab-waiting { border: 3px dashed var(--ink); background: rgba(251, 253, 241, .6); color: var(--ink); text-align: center;
                        padding: 40px 16px; line-height: 1.8; font-size: 0.98rem; min-height: 330px; display: flex; flex-direction: column; justify-content: center; }
-        .lab-waiting-icon { font-family: 'Press Start 2P', monospace; font-size: 1.8rem; margin-bottom: 8px; animation: blink 1.2s steps(1) infinite; }
+        .lab-waiting-icon { font-family: 'Press Start 2P', monospace; font-size: 1.8rem; margin-bottom: 8px; }
         .stMarkdown a { color: #2F6B2A; text-decoration: underline; font-weight: 600; }
         hr { border-color: var(--ink) !important; opacity: .3; margin: 0.4rem 0 !important; }
 
@@ -472,8 +470,8 @@ def apply_style():
         div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child { width: 0; height: 0; overflow: hidden; margin: 0; padding: 0; }   /* 동그란 라디오 표시 숨기기 */
 
         /* ===== 11) 설명 상자 (정상 = 초록, 오류 = 벽돌, 핵심 = 황토, 관찰 = 파랑) ===== */
-        .bt-box { background: var(--paper); border: 2px solid var(--ink); padding: 10px 14px; margin-bottom: 6px; color: var(--text); line-height: 1.6; font-size: 0.95rem; }
-        .bt-box-label { font-family: 'Galmuri11', monospace; font-size: 0.85rem; font-weight: 700; margin-bottom: 3px; }
+        .bt-box { background: var(--paper); border: 2px solid var(--ink); padding: 12px 16px; margin-bottom: 8px; color: var(--text); line-height: 1.75; font-size: 1rem; }
+        .bt-box-label { font-family: 'Galmuri11', monospace; font-size: 0.92rem; font-weight: 700; margin-bottom: 5px; }
         .bt-ok { border-left: 8px solid #2F6B2A; } .bt-ok .bt-box-label { color: #2F6B2A; }
         .bt-obs { border-left: 8px solid var(--sky); } .bt-obs .bt-box-label { color: var(--sky); }
         .bt-err { border-left: 8px solid var(--red); } .bt-err .bt-box-label { color: var(--red); }
@@ -484,7 +482,7 @@ def apply_style():
         .bt-flow-box { flex: 1; text-align: center; padding: 8px 8px; border: 3px solid var(--ink); background: var(--lime-soft); }
         .bt-flow-box .bt-icon { font-size: 1.6rem; color: var(--ink); }
         .bt-flow-name { font-family: 'Galmuri11', sans-serif; color: var(--ink); font-weight: 700; margin: 2px 0; }
-        .bt-flow-text { color: var(--text); font-size: 0.88rem; line-height: 1.45; }
+        .bt-flow-text { color: var(--text); font-size: 0.97rem; line-height: 1.55; }
         .bt-flow-out { border-color: var(--red); background: #FBE7DF; }
         .bt-flow-out .bt-icon, .bt-flow-out .bt-flow-name { color: var(--red); }
         .bt-flow-arrow { align-self: center; color: var(--ink); font-size: 1.4rem; font-weight: 800; }
@@ -501,6 +499,58 @@ def apply_style():
         .bt-badge { display: inline-block; font-family: 'Galmuri11', monospace; font-size: 0.82rem; font-weight: 700; border: 2px solid var(--ink); padding: 1px 8px; margin: 0 4px 4px 0; color: var(--ink); background: var(--paper); }
         .bt-badge-on { background: var(--lime); }
 
+        /* ===== 11-1) 고정된 모니터 안에서만 스크롤 =====
+           모니터 틀·창 제목 줄·메뉴는 그대로 두고, 페이지 내용 상자(win_body)만 정해진 높이 안에서 스크롤한다.
+           100vh = 브라우저 창 높이. --chrome = 모니터 틀·제목 줄·메뉴·아래 패널이 차지하는 높이 */
+        :root { --chrome: 375px; --chrome-max: 200px; }
+        html, body { overflow: hidden; }                                   /* 페이지 전체는 스크롤하지 않는다 */
+        [data-testid="stMain"] { overflow: hidden; }
+        /* !important: Streamlit이 상자에 자동으로 넣는 높이 설정보다 우선하게 한다 */
+        .st-key-win_body { height: calc(100vh - var(--chrome)) !important; max-height: calc(100vh - var(--chrome)) !important; flex: none !important;
+                           overflow-y: auto !important; overflow-x: hidden; padding: 4px 14px 24px 4px; }
+        .st-key-crt_max .st-key-win_body { height: calc(100vh - var(--chrome-max)) !important; max-height: calc(100vh - var(--chrome-max)) !important; }
+        /* 스크롤 막대도 픽셀 느낌으로 */
+        .st-key-win_body::-webkit-scrollbar { width: 14px; }
+        .st-key-win_body::-webkit-scrollbar-track { background: var(--lime-soft); border-left: 3px solid var(--ink); }
+        .st-key-win_body::-webkit-scrollbar-thumb { background: var(--ink); border: 3px solid var(--lime-soft); }
+
+        /* ===== 11-2) 핵심 원리 강조 상자 (가장 눈에 띄게) ===== */
+        .bt-keypoint { display: flex; gap: 14px; align-items: center; background: var(--lime); color: var(--ink); padding: 16px 20px; margin: 10px 6px 14px;
+                       box-shadow: 0 -5px 0 0 var(--ink), 0 5px 0 0 var(--ink), -5px 0 0 0 var(--ink), 5px 0 0 0 var(--ink), 0 10px 0 0 rgba(31,77,37,.25); }
+        .bt-keypoint .bt-icon { font-size: 2.4rem; }
+        .bt-keypoint-label { font-family: 'Galmuri11', monospace; font-weight: 700; font-size: 0.9rem; }
+        .bt-keypoint-text { font-family: 'Noto Sans KR', sans-serif; font-weight: 800; font-size: 1.18rem; line-height: 1.55; }
+
+        /* ===== 11-3) 먼저 알아 둘 용어 (카드 4장) ===== */
+        .bt-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 6px; }
+        .bt-term { background: var(--paper); border: 2px solid var(--ink); border-top: 6px solid var(--ink); padding: 10px 12px; }
+        .bt-term-name { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1rem; margin-bottom: 4px; }
+        .bt-term-desc { font-size: 0.95rem; line-height: 1.6; color: var(--text); }
+
+        /* ===== 11-4) 구역 제목 (SYMPTOM · 어떤 현상인가 등) ===== */
+        .sec-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1.08rem;
+                     border-bottom: 3px solid var(--ink); padding-bottom: 4px; margin: 22px 0 10px; }
+
+        /* ===== 11-5) 사례 선택 상자: 눈에 잘 띄게 (라임색 띠 + 큰 글자) ===== */
+        .st-key-case_pick { background: var(--lime); padding: 10px 14px 12px; margin: 4px 6px 6px;
+                            box-shadow: 0 -4px 0 0 var(--ink), 0 4px 0 0 var(--ink), -4px 0 0 0 var(--ink), 4px 0 0 0 var(--ink); }
+        .st-key-case_pick [data-testid="stWidgetLabel"] p { font-family: 'Galmuri11', sans-serif !important; font-size: 1.05rem !important; }
+        .st-key-case_pick div[data-baseweb="select"] > div { min-height: 52px; border-width: 4px; }
+        .st-key-case_pick div[data-baseweb="select"] div { font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+
+        /* ===== 11-6) '문서로 확인' 이름표 = 누르면 공식 문서가 새 탭에서 열리는 링크 ===== */
+        a.bt-basis-ok { text-decoration: none !important; cursor: pointer; }
+        a.bt-basis-ok:hover { background: var(--lime); }
+
+        /* ===== 11-7) 오류 도감의 넓은 사례 카드 ===== */
+        .cat-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .cat-title { font-family: 'Noto Sans KR', sans-serif; font-weight: 800; color: var(--ink); font-size: 1.3rem; margin: 6px 0 2px; }
+        .cat-summary { font-size: 1rem; line-height: 1.7; color: var(--text); margin: 4px 0 8px; }
+        .cat-terms { display: flex; flex-wrap: wrap; gap: 6px; }
+        .cat-terms span { font-size: 0.9rem; background: var(--lime-soft); border: 2px solid var(--ink); padding: 2px 8px; color: var(--ink); }
+        .cat-terms b { font-family: 'Galmuri11', sans-serif; }
+        .cat-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 12px; font-family: 'Galmuri11', sans-serif; color: var(--ink); }
+        .cat-flow span { background: var(--paper); border: 2px solid var(--ink); padding: 3px 10px; font-weight: 700; }
         /* ===== 12) 좁은 화면(휴대폰) ===== */
         @media (max-width: 800px) {
             .st-key-crt { padding: 10px 8px 6px; border-radius: 18px; }
@@ -510,6 +560,8 @@ def apply_style():
             .bt-banner-en { font-size: 0.9rem; } .bt-banner-ko { font-size: 1rem; }
             .px-grill, .px-floppy { display: none; }
             .bt-flow { flex-direction: column; } .bt-flow-arrow { transform: rotate(90deg); }
+            html, body, [data-testid="stMain"] { overflow: auto; }          /* 휴대폰은 화면이 작아서 페이지 전체 스크롤 */
+            .st-key-win_body { height: auto !important; max-height: none !important; overflow: visible !important; }
         }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
         </style>
