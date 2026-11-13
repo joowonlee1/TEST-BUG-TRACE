@@ -360,24 +360,25 @@ def apply_style():
         .st-key-crt_max { background: #D9CCAE; border: 3px solid #B9A884; border-radius: 16px; padding: 6px; gap: 0; }
 
         /* 모니터 아래쪽: 스피커, 불빛, 플로피 디스크, 전원 버튼 */
-        .px-panel { display: flex; align-items: center; justify-content: space-between; gap: 2vw; padding: clamp(12px, 1.6vw, 26px) 1vw 2px; }
-        .px-screw { width: 14px; height: 14px; border-radius: 50%; background: #D8CAAA; border: 2px solid #9C8D6E; box-shadow: inset 2px 2px 0 #F3EAD4; }
-        .px-grill { width: 15vw; max-width: 240px; height: 38px; background: repeating-linear-gradient(0deg, #7E735C 0 4px, transparent 4px 9px); border-radius: 3px; }
-        .px-leds { display: flex; gap: 14px; }
-        .px-leds span { width: 18px; height: 18px; border-radius: 50%; border: 3px solid #6C6450; }
+        /* 아래 패널은 얇게: 화면(내용)이 차지할 높이를 늘리려고 장식 크기를 줄였다 */
+        .px-panel { display: flex; align-items: center; justify-content: space-between; gap: 2vw; padding: clamp(6px, 0.8vw, 12px) 1vw 0; }
+        .px-screw { width: 12px; height: 12px; border-radius: 50%; background: #D8CAAA; border: 2px solid #9C8D6E; box-shadow: inset 2px 2px 0 #F3EAD4; }
+        .px-grill { width: 15vw; max-width: 240px; height: 22px; background: repeating-linear-gradient(0deg, #7E735C 0 3px, transparent 3px 7px); border-radius: 3px; }
+        .px-leds { display: flex; gap: 12px; }
+        .px-leds span { width: 14px; height: 14px; border-radius: 50%; border: 3px solid #6C6450; }
         /* 초록 불빛: 컴퓨터가 일하는 것처럼 불규칙하게 깜빡인다 */
         .px-led-on { background: #6BD43C; box-shadow: 0 0 10px #6BD43C; animation: led 2.4s steps(1) infinite; }
         @keyframes led { 0%, 30%, 55%, 100% { opacity: 1; } 25%, 50%, 70% { opacity: .35; } }
         .px-led-dim { background: #A39324; }
         /* 플로피 디스크 입구: 틀 + 검은 틈 + 꺼내는 버튼 */
-        .px-floppy { width: 22vw; max-width: 360px; height: 58px; border: 3px solid #A99B7E; border-radius: 5px; background: linear-gradient(180deg, #F3EAD5, #E2D5B8); position: relative; box-shadow: inset 0 2px 0 #FFF8E8; }
-        .px-floppy::before { content: ""; position: absolute; left: 7%; right: 26%; top: 22px; height: 10px; background: #2F2B22; border-radius: 2px; }
-        .px-floppy::after { content: ""; position: absolute; right: 6%; top: 17px; width: 15%; height: 20px; background: #F7F0DE; border: 3px solid #A99B7E; border-radius: 3px; }
+        .px-floppy { width: 22vw; max-width: 360px; height: 34px; border: 3px solid #A99B7E; border-radius: 5px; background: linear-gradient(180deg, #F3EAD5, #E2D5B8); position: relative; box-shadow: inset 0 2px 0 #FFF8E8; }
+        .px-floppy::before { content: ""; position: absolute; left: 7%; right: 26%; top: 11px; height: 7px; background: #2F2B22; border-radius: 2px; }
+        .px-floppy::after { content: ""; position: absolute; right: 6%; top: 7px; width: 15%; height: 14px; background: #F7F0DE; border: 3px solid #A99B7E; border-radius: 3px; }
         /* 진짜 전원 버튼 (라임색, 누르면 첫 화면으로) */
-        .st-key-power { padding-top: clamp(14px, 1.8vw, 28px); }   /* 화면 테두리와 겹치지 않게 아래로 */
+        .st-key-power { padding-top: clamp(6px, 0.8vw, 12px); }   /* 화면 테두리와 겹치지 않게 살짝 아래로 */
         .st-key-power div.stButton { padding-top: 0; }
-        .st-key-power div.stButton button { background: var(--lime); min-height: 56px; width: 76px; min-width: 76px; padding: 0; }
-        .st-key-power div.stButton button [data-testid="stIconMaterial"] { font-size: 2rem !important; margin-right: 0; }
+        .st-key-power div.stButton button { background: var(--lime); min-height: 38px; width: 60px; min-width: 60px; padding: 0; margin: 4px 5px 8px; }
+        .st-key-power div.stButton button [data-testid="stIconMaterial"] { font-size: 1.5rem !important; margin-right: 0; }
         .st-key-power div.stButton button:hover { background: #D7F57E; }
 
         /* ===== 6) 픽셀 테두리 (모서리가 한 칸 비는 도트 느낌)
@@ -490,7 +491,7 @@ def apply_style():
         /* ===== 11-1) 고정된 모니터 안에서만 스크롤 =====
            모니터 틀·창 제목 줄·메뉴는 그대로 두고, 페이지 내용 상자(win_body)만 정해진 높이 안에서 스크롤한다.
            100vh = 브라우저 창 높이. --chrome = 모니터 틀·제목 줄·메뉴·아래 패널이 차지하는 높이 */
-        :root { --chrome: 375px; --chrome-max: 200px; }
+        :root { --chrome: 340px; --chrome-max: 200px; }
         html, body { overflow: hidden; }                                   /* 페이지 전체는 스크롤하지 않는다 */
         [data-testid="stMain"] { overflow: hidden; }
         /* !important: Streamlit이 상자에 자동으로 넣는 높이 설정보다 우선하게 한다 */
@@ -535,7 +536,8 @@ def apply_style():
         .cat-title { font-family: 'Noto Sans KR', sans-serif; font-weight: 800; color: var(--ink); font-size: 1.3rem; margin: 6px 0 2px; }
         .cat-summary { font-size: 1rem; line-height: 1.7; color: var(--text); margin: 4px 0 8px; }
         .cat-terms { display: flex; flex-wrap: wrap; gap: 6px; }
-        .cat-terms span { font-size: 0.9rem; background: var(--lime-soft); border: 2px solid var(--ink); padding: 2px 8px; color: var(--ink); }
+        .cat-terms span { font-size: 0.9rem; background: var(--lime-soft); border: 2px solid var(--ink); padding: 2px 8px; color: var(--ink); cursor: help; }   /* cursor: help = 마우스 모양이 물음표로 바뀌어 설명이 있음을 알려 준다 */
+        .cat-terms span:hover { background: var(--lime); }
         .cat-terms b { font-family: 'Galmuri11', sans-serif; }
         .cat-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 12px; font-family: 'Galmuri11', sans-serif; color: var(--ink); }
         .cat-flow span { background: var(--paper); border: 2px solid var(--ink); padding: 3px 10px; font-weight: 700; }
