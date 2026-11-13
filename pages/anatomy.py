@@ -1,9 +1,9 @@
 # =============================================================
 # pages/anatomy.py  (원인 해부실)
 # 오류 하나를 골라 위에서 아래로 '추적 순서'대로 분석한다.
-#   ① 제목 → ② 증상 · 정상이라면 · 실제로는 (+ 직접 관찰)
-#   → ③ 처리 과정(입력 → 처리 → 출력) → ④ 원인 추적 기록 #01~#04 (문서로 확인 / 추정)
-#   → ⑤ 핵심 원리 → ⑥ 탭: 자주 생기는 곳 / 해결 방법 / 출처 / 관련 사례
+#   ① 제목 → ② 핵심 원리(가장 크게) → ③ 먼저 알아 둘 용어 → ④ 증상 · 정상이라면 · 실제로는 (+ 직접 관찰)
+#   → ⑤ 처리 과정(입력 → 처리 → 출력) → ⑥ 원인 추적 기록 #01~#04 (문서로 확인 = 누르면 문서가 열림 / 추정)
+#   → ⑦ 실험실 버튼 → ⑧ 출처 → ⑨ 탭: 자주 생기는 곳 / 해결 방법 / 관련 사례
 # =============================================================
 
 from html import escape           # 글자 속 <, > 기호를 안전하게 바꾸는 함수
@@ -39,17 +39,18 @@ def move_to_case(case_id):
 
 def show_case_selector(cases):
     """분석할 오류를 고르는 선택 상자를 보여 준다."""
-    case_ids = [case["id"] for case in cases]   # [1, 2, 3, ..., 12]
+    case_ids = [case["id"] for case in cases]   # [1, 2, 3, 4, 5]
     restore_selected_case(case_ids)
-    # format_func: 선택지에 번호 대신 "BUG-001 · 제목"처럼 보여 준다.
-    st.selectbox(
-        "사례 선택",
-        case_ids,
-        key="anatomy_case",
-        format_func=lambda case_id: case_label(find_case(cases, case_id)),
-        on_change=remember_case,
-        label_visibility="collapsed",
-    )
+    # key="case_pick": 라임색 띠 상자 (CSS로 눈에 띄게 꾸민다)
+    with st.container(key="case_pick"):
+        # format_func: 선택지에 번호 대신 "BUG-001 · 제목"처럼 보여 준다.
+        st.selectbox(
+            "🔎 분석할 사례를 고르세요 (5개)",
+            case_ids,
+            key="anatomy_case",
+            format_func=lambda case_id: case_label(find_case(cases, case_id)),
+            on_change=remember_case,
+        )
 
 
 # -------------------------------------------------------------
@@ -120,10 +121,13 @@ def show_flow(case):
 # 3. 원인 추적 기록과 핵심 원리
 # -------------------------------------------------------------
 
-def basis_badge(basis):
-    """단계마다 붙일 근거 이름표. 확인 = 공식 문서로 확인, 추정 = 아직 확인되지 않은 설명"""
-    if basis == "확인":
-        return '<span class="bt-basis bt-basis-ok">📘 문서로 확인</span>'
+def basis_badge(case, step):
+    """단계마다 붙일 근거 이름표. 확인 = 누르면 그 근거 문서가 새 탭에서 열린다 / 추정 = 아직 확인되지 않은 설명"""
+    if step["basis"] == "확인" and step["source"] is not None:
+        source = case["sources"][step["source"]]          # 이 단계의 근거 문서 (출처 목록에서 몇 번째인지 데이터에 적혀 있음)
+        # target="_blank": 새 탭에서 열기 / title: 마우스를 올리면 문서 이름이 보인다
+        return (f'<a class="bt-basis bt-basis-ok" href="{escape(source["url"])}" target="_blank" '
+                f'title="{escape(source["title"])}">📘 문서로 확인 ↗</a>')
     return '<span class="bt-basis bt-basis-guess">🔎 추정</span>'
 
 
@@ -135,7 +139,7 @@ def show_steps(case):
     for step_number, step in enumerate(case["steps"], start=1):
         cards += f"""
             <div class="an-step">
-                <div class="an-step-head"><span class="bt-step-no">#{step_number:02d}</span>{basis_badge(step['basis'])}</div>
+                <div class="an-step-head"><span class="bt-step-no">#{step_number:02d}</span>{basis_badge(case, step)}</div>
                 <div class="an-step-text">{escape(step['text'])}</div>
             </div>
         """
@@ -146,18 +150,35 @@ def show_steps(case):
 
 
 def show_key_point(case):
-    """⑤ 오류의 핵심 원리를 한 문장으로 정리해서 보여 준다."""
+    """② 오류의 핵심 원리를 한 문장으로, 페이지에서 가장 눈에 띄게 보여 준다."""
     render_html(f"""
-        <div class="bt-box bt-key an-key">
-            <div class="bt-box-label">💡 KEY POINT · 핵심 원리</div>
-            <div>{escape(case['key_point'])}</div>
+        <div class="bt-keypoint">
+            {icon("lightbulb")}
+            <div><div class="bt-keypoint-label">KEY POINT · 이것만 기억하세요</div>
+            <div class="bt-keypoint-text">{escape(case['key_point'])}</div></div>
         </div>
     """)
 
 
+def show_terms(case):
+    """③ 설명을 읽기 전에 먼저 알아 둘 전문용어를 카드로 보여 준다."""
+    cards = ""
+    for term in case["terms"]:               # term = {"term": "용어", "desc": "쉬운 설명"}
+        cards += f'<div class="bt-term"><div class="bt-term-name">{escape(term["term"])}</div><div class="bt-term-desc">{escape(term["desc"])}</div></div>'
+    render_html(f'{section_label("menu_book", "WORDS", "먼저 알아 둘 용어")}<div class="bt-terms">{cards}</div>')
+
+
+def show_sources(case):
+    """⑧ 근거가 된 공식 문서 목록 (누르면 새 탭에서 열린다)"""
+    items = ""
+    for number, source in enumerate(case["sources"], start=1):
+        items += f'<li><a href="{escape(source["url"])}" target="_blank">{escape(source["title"])} ↗</a></li>'
+    render_html(f'{section_label("library_books", "SOURCES", "출처")}<div class="bt-box"><ol class="an-sources">{items}</ol></div>')
+
+
 def show_lab_link(case):
     """실험실로 가는 버튼 (실험할 수 있는 오류에서만 부른다)"""
-    if st.button("현상 실험실에서 직접 확인", icon=":material/science:", type="primary", width="stretch"):
+    if st.button("이 원리를 현상 실험실에서 직접 확인하기", icon=":material/science:", type="primary", width="stretch"):
         # 어떤 실험을 열지 저장해 두고 실험실로 이동한다.
         st.session_state["saved_lab"] = case["lab"]
         st.switch_page("pages/laboratory.py")
@@ -185,10 +206,8 @@ def show_related_cases(cases, case):
 
 
 def show_detail_tabs(cases, case):
-    """⑥ 자세한 정보를 탭으로 나눠서 한 화면에 담는다. (스크롤을 줄이려고)"""
-    where_tab, fix_tab, source_tab, related_tab = st.tabs(
-        ["📍 자주 생기는 곳", "🛠️ 해결 방법", "📚 출처", "🔗 관련 사례"]
-    )
+    """⑨ 자세한 정보를 탭으로 나눠서 한 화면에 담는다."""
+    where_tab, fix_tab, related_tab = st.tabs(["📍 자주 생기는 곳", "🛠️ 해결 방법", "🔗 관련 사례"])
     with where_tab:
         show_bullets(case["where"])
     with fix_tab:
@@ -199,11 +218,6 @@ def show_detail_tabs(cases, case):
         with developer_column:
             st.markdown("**개발자가 할 수 있는 것**")
             show_bullets(case["fix_dev"])
-    with source_tab:
-        st.caption("📘 문서로 확인 = 아래 공식 문서로 확인한 내용 · 🔎 추정 = 공식 설명이 없어 추정한 내용")
-        for source in case["sources"]:
-            # [글자](주소) → 마크다운 링크. 누르면 새 탭에서 문서가 열린다.
-            st.markdown(f"- [{source['title']}]({source['url']})")
     with related_tab:
         show_related_cases(cases, case)
 
@@ -212,11 +226,8 @@ def apply_anatomy_style():
     """원인 해부실에만 쓰는 배치 디자인"""
     render_html("""
         <style>
-        /* 구역 제목: 진한 초록 픽셀 글꼴 + 아래 점선 */
-        .sec-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 0.95rem;
-                     border-bottom: 2px dashed rgba(31, 77, 37, .35); padding-bottom: 3px; margin: 10px 0 8px; }
         .an-title h2 { margin: 2px 0 0 !important; }
-        .an-summary { color: var(--dim); font-size: 0.95rem; }
+        .an-summary { color: var(--text); font-size: 1.02rem; line-height: 1.7; }
         /* 같은 높이의 3칸 격자 (증상 · 정상이라면 · 실제로는) */
         .an-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .an-grid3 .bt-box { margin: 0; }
@@ -226,8 +237,9 @@ def apply_anatomy_style():
         .an-step { background: var(--paper); border: 3px solid var(--ink); padding: 10px 12px; }
         .an-step-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
         .an-step-head .bt-step-no { flex: none; width: 50px; height: 32px; line-height: 28px; }
-        .an-step-text { font-size: 0.92rem; line-height: 1.6; color: var(--text); }
-        .an-key { margin: 0 0 14px 0; }    /* 아래 탭과 붙지 않게 여백 */
+        .an-step-text { font-size: 0.98rem; line-height: 1.7; color: var(--text); }
+        .an-sources { margin: 0; padding-left: 22px; line-height: 1.9; }
+        .an-sources a { color: #2F6B2A; font-weight: 700; }
         @media (max-width: 800px) { .an-grid3 { grid-template-columns: 1fr; } }
         </style>
     """)
@@ -243,18 +255,12 @@ with crt_frame("pages/anatomy.py", "ANATOMY"):
     current_case = find_case(all_cases, st.session_state["anatomy_case"])       # 고른 오류 데이터
 
     show_title(current_case)                  # ① 제목
-    show_symptom_row(current_case)            # ② 증상 · 정상이라면 · 실제로는 (+ 직접 관찰)
-    show_flow(current_case)                   # ③ 처리 과정
-    show_steps(current_case)                  # ④ 원인 추적 기록
-
-    # ⑤ 핵심 원리: 실험할 수 있는 오류(lab 값이 있음)면 오른쪽에 실험실 버튼을 붙이고, 없으면 한 줄 전체를 쓴다.
-    if current_case["lab"]:
-        key_column, lab_column = st.columns([4, 1], vertical_alignment="center")
-        with key_column:
-            show_key_point(current_case)
-        with lab_column:
-            show_lab_link(current_case)
-    else:
-        show_key_point(current_case)
-
-    show_detail_tabs(all_cases, current_case)                                   # ⑥ 아래 탭
+    show_key_point(current_case)              # ② 핵심 원리 (가장 크게)
+    show_terms(current_case)                  # ③ 먼저 알아 둘 용어
+    show_symptom_row(current_case)            # ④ 증상 · 정상이라면 · 실제로는 (+ 직접 관찰)
+    show_flow(current_case)                   # ⑤ 처리 과정
+    show_steps(current_case)                  # ⑥ 원인 추적 기록
+    if current_case["lab"]:                   # ⑦ 실험할 수 있는 사례(lab 값이 있음)만 실험실 버튼
+        show_lab_link(current_case)
+    show_sources(current_case)                # ⑧ 출처 (누르면 문서가 열린다)
+    show_detail_tabs(all_cases, current_case) # ⑨ 아래 탭

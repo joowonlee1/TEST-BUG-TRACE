@@ -10,9 +10,10 @@ import streamlit as st
 
 from common import CAUSE_TYPES, case_label, crt_frame, find_case, load_cases, open_case, page_banner, render_html
 
-# 처음 들어왔을 때 비교할 두 오류 (같은 '상태 불일치' 유형인 CASE 01과 CASE 06)
+# 처음 들어왔을 때 비교할 두 오류: 같은 '표현의 한계' 유형인 BUG-001(정수)과 BUG-002(실수)
+# → "정수에서 배운 비트 표현이 실수에서는 어떻게 될까?"라는 탐구 출발점을 바로 비교한다
 DEFAULT_LEFT_ID = 1
-DEFAULT_RIGHT_ID = 6
+DEFAULT_RIGHT_ID = 2
 
 
 # -------------------------------------------------------------
@@ -60,37 +61,40 @@ def show_selectors(cases):
 # 2. 나란히 비교하기
 # -------------------------------------------------------------
 
-def show_case_column(case, side):
-    """오류 하나의 핵심 정보를 한 칸에 세로로 보여 준다."""
-    render_html(f"""
-        <div>
+def case_header(case):
+    """비교 칸 맨 위: 이름표 + 전문용어 제목 + 쉬운 이름"""
+    return f"""
+        <div class="bt-box">
             <span class="bt-badge bt-badge-on">BUG-{case['id']:03d}</span>
             <span class="bt-badge">{escape(case['category'])}</span>
             <span class="bt-badge">{escape(case['cause_type'])}</span>
+            <h3>{escape(case['title'])}</h3>
+            <div class="bt-card-nick">“{escape(case["nickname"])}” · {escape(case['tech'])}</div>
         </div>
-    """)
-    # 전문용어 제목, 쉬운 이름, 증상, 핵심 원리를 한 번에 그린다.
-    render_html(f"""
-        <h3>{escape(case['title'])}</h3>
-        <div class="bt-card-nick">“{escape(case["nickname"])}” · {escape(case['tech'])}</div>
-        <div class="bt-box"><div class="bt-box-label">SYMPTOM · 증상</div>{escape(case['symptom'])}</div>
-        <div class="bt-box bt-key"><div class="bt-box-label">💡 KEY POINT · 핵심 원리</div>{escape(case['key_point'])}</div>
-    """)
-    # side: 버튼 이름이 겹치지 않도록 "left" 또는 "right"를 붙인다.
-    if st.button("원인 추적 ▶", key=f"compare_open_{side}", width="stretch"):
-        open_case(case["id"])
+    """
 
 
 def show_side_by_side(left_case, right_case):
-    """두 오류를 왼쪽·오른쪽 칸에 나란히 보여 준다."""
-    left_column, right_column = st.columns(2)
-    with left_column:
-        with st.container(border=True):
-            show_case_column(left_case, "left")
-    with right_column:
-        with st.container(border=True):
-            show_case_column(right_case, "right")
-
+    """두 오류를 왼쪽·오른쪽에 나란히 보여 준다. 같은 줄의 상자는 높이가 똑같이 맞춰진다."""
+    # CSS 격자(grid) 2칸: 제목 → 증상 → 핵심 원리를 한 줄씩 쌓으면, 한 줄 안의 두 상자 높이가 같아진다.
+    cells = ""
+    for left_html, right_html in [
+        (case_header(left_case), case_header(right_case)),
+        (f'<div class="bt-box"><div class="bt-box-label">SYMPTOM · 증상</div>{escape(left_case["symptom"])}</div>',
+         f'<div class="bt-box"><div class="bt-box-label">SYMPTOM · 증상</div>{escape(right_case["symptom"])}</div>'),
+        (f'<div class="bt-box bt-key"><div class="bt-box-label">💡 KEY POINT · 핵심 원리</div><b>{escape(left_case["key_point"])}</b></div>',
+         f'<div class="bt-box bt-key"><div class="bt-box-label">💡 KEY POINT · 핵심 원리</div><b>{escape(right_case["key_point"])}</b></div>'),
+    ]:
+        cells += left_html + right_html
+    render_html(f'<div class="cmp-grid">{cells}</div>')
+    # 버튼은 상자들 아래에 따로 한 줄로 놓아서 두 버튼이 항상 같은 높이에 오게 한다.
+    left_button, right_button = st.columns(2)
+    with left_button:
+        if st.button(f"BUG-{left_case['id']:03d} 원인 추적 ▶", key="compare_open_left", width="stretch"):
+            open_case(left_case["id"])
+    with right_button:
+        if st.button(f"BUG-{right_case['id']:03d} 원인 추적 ▶", key="compare_open_right", width="stretch"):
+            open_case(right_case["id"])
 
 # -------------------------------------------------------------
 # 3. 공통점과 차이점 분석
@@ -101,6 +105,9 @@ def find_common_keywords(left_case, right_case):
     # set(집합)으로 바꾸고 & 연산을 하면 양쪽에 모두 있는 값만 남는다. (교집합)
     return sorted(set(left_case["keywords"]) & set(right_case["keywords"]))
 
+
+# 두 사례의 공통점과 차이점을 계산하는 비교 기능이다.
+# 화면 배치는 별도 함수에서 담당해 비교 로직과 출력 코드를 구분한다.
 
 def compare_cases(left_case, right_case):
     """두 오류를 비교해서 (공통점 목록, 차이점 목록)을 만든다."""
@@ -161,7 +168,7 @@ def show_analysis(left_case, right_case):
 # -------------------------------------------------------------
 
 def group_by_cause(cases):
-    """원인 유형마다 해당하는 오류들을 묶는다. 예) {"상태 불일치": [오류1, 오류6], ...}"""
+    """원인 유형마다 해당하는 오류들을 묶는다. 예) {"표현의 한계": [오류1, 오류2], ...}"""
     groups = {}
     for cause in CAUSE_TYPES:
         groups[cause] = []
@@ -200,8 +207,13 @@ def show_cause_groups(cases):
                     )
 
 
+# 비교 격자 디자인: 2칸, 같은 줄의 상자는 높이를 맞춘다 (상자 안 여백 정리)
+COMPARE_STYLE = "<style>.cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; } .cmp-grid .bt-box { margin: 0; } .cmp-grid h3 { margin: 6px 0 0 !important; }</style>"
+
+
 # ----- 실제 실행 순서 -----
 all_cases = load_cases()
+render_html(COMPARE_STYLE)
 
 with crt_frame("pages/compare.py", "COMPARE"):
     page_banner("compare_arrows", "ERROR COMPARE", "오류 비교실", "두 오류의 공통점과 차이점을 나란히 비교합니다.")
