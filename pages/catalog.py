@@ -91,8 +91,8 @@ def show_case_row(case):
     with st.container(border=True):
         info_column, key_column = st.columns([3, 2], vertical_alignment="top")
         with info_column:
-            # 용어 이름표: 용어 이름 + 짧은 설명
-            terms = "".join(f"<span><b>{escape(t['term'])}</b></span>" for t in case["terms"])
+            # 용어 이름표: title= 에 설명을 넣으면 마우스를 올렸을 때 짧은 설명이 뜬다
+            terms = "".join(f'<span title="{escape(t["desc"])}"><b>{escape(t["term"])}</b></span>' for t in case["terms"])
             render_html(f"""
                 <div class="cat-head">
                     <span class="bt-badge bt-badge-on">BUG-{case['id']:03d}</span>
@@ -102,7 +102,7 @@ def show_case_row(case):
                 <div class="cat-title">{escape(case['title'])}</div>
                 <div class="bt-card-nick">“{escape(case['nickname'])}”</div>
                 <div class="cat-summary">{escape(case['summary'])}</div>
-                <div class="bt-box-label" style="color:var(--ink)">{icon("menu_book")} 먼저 알아 둘 용어</div>
+                <div class="bt-box-label" style="color:var(--ink)">{icon("menu_book")} 먼저 알아 둘 용어 (마우스를 올리면 설명이 보여요)</div>
                 <div class="cat-terms">{terms}</div>
             """)
         with key_column:
