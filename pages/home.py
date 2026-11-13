@@ -22,8 +22,8 @@ def apply_home_style():
     render_html("""
         <style>
         /* 모니터 화면이 브라우저 높이를 거의 채우고, 내용은 위아래 가운데에 오게 한다 */
-        /* 100vh = 브라우저 창 높이. 모니터 틀과 아래쪽 패널 높이(약 280px)를 빼서 한 화면에 다 보이게 한다 */
-        .st-key-crt_screen { min-height: calc(100vh - 280px); justify-content: center; }
+        /* 100vh = 브라우저 창 높이. 모니터 틀과 아래쪽 패널 높이(약 200px)를 빼서 한 화면에 다 보이게 한다 */
+        .st-key-crt_screen { min-height: calc(100vh - 200px); justify-content: center; }
 
         /* 화면 네 귀퉁이의 ㄱ자 빗금 무늬 (가로 빗금 + 아래로 짧은 세로 빗금) */
         .home-corners { display: flex; justify-content: space-between; }
