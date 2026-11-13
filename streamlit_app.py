@@ -20,9 +20,6 @@ def setup_page():
     )
 
 
-# 페이지 등록 목록은 이 함수에서만 관리한다.
-# 개별 페이지의 내용과 실험 계산은 pages 폴더의 독립 함수에서 실행한다.
-
 def create_pages():
     """pages 폴더 안의 파일들을 페이지로 등록하고 목록으로 돌려준다."""
     # st.Page(파일 경로, title=메뉴 이름, icon=메뉴 아이콘)
@@ -33,6 +30,7 @@ def create_pages():
         st.Page("pages/anatomy.py", title="원인 해부실", icon=":material/layers:"),
         st.Page("pages/laboratory.py", title="현상 실험실", icon=":material/science:"),
         st.Page("pages/compare.py", title="오류 비교실", icon=":material/compare_arrows:"),
+        st.Page("pages/detection.py", title="오류 검출", icon=":material/fact_check:"),
     ]
 
 

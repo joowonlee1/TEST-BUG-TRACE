@@ -23,24 +23,20 @@ import streamlit as st                       # 웹앱을 만드는 라이브러�
 # 즉 "common.py와 같은 폴더 안의 data/cases.json"을 가리킨다.
 DATA_PATH = Path(__file__).parent / "data" / "cases.json"
 
-# 오류 분류 목록 (오류 도감의 분류 버튼에 사용)
-# 순서 = 탐구 흐름: 숫자(정수 → 실수)를 비트로 저장하는 방식 → 글자를 숫자로 저장하는 방식 → 한글 입력
-CATEGORIES = ["숫자", "문자", "입력"]
+# 사례 분류 목록 (오류 도감의 분류 버튼에 사용) — 탐구 순서: 정수 → 실수
+CATEGORIES = ["정수", "실수"]
 
 # 분류마다 붙일 아이콘 (Streamlit이 제공하는 Material 아이콘 이름)
 CATEGORY_ICONS = {
     "전체": "layers",
-    "숫자": "calculate",
-    "문자": "text_fields",
-    "입력": "keyboard",
+    "정수": "pin",
+    "실수": "percent",
 }
 
-# 원인 유형 이름과 설명 (딕셔너리: "이름": "설명")
-# 오류 비교실에서 두 오류의 원인을 묶고 비교할 때 사용한다.
+# 원인 유형 이름과 설명 (딕셔너리: "이름": "설명") — 오류 도감 카드와 오류 비교실에서 사용
 CAUSE_TYPES = {
-    "표현의 한계": "정해진 칸 수(비트)로는 정보를 완벽하게 저장할 수 없어서 생기는 오류",
-    "규칙 불일치": "저장할 때와 읽을 때 쓰는 규칙이 달라서 생기는 오류",
-    "상태 불일치": "두 곳이 기억하는 정보가 서로 달라서 생기는 오류",
+    "범위의 한계": "칸 수가 정해져 있어서 담을 수 있는 가장 큰 수와 가장 작은 수가 있다",
+    "정밀도의 한계": "칸 수가 정해져 있어서 끝없이 이어지는 수나 아주 작은 수를 정확히 담지 못한다",
 }
 
 # 모니터 화면 위쪽 메뉴: (페이지 파일, 메뉴 이름, 아이콘)
@@ -50,6 +46,7 @@ NAV_PAGES = [
     ("pages/anatomy.py", "원인 해부실", ":material/layers:"),
     ("pages/laboratory.py", "현상 실험실", ":material/science:"),
     ("pages/compare.py", "오류 비교실", ":material/compare_arrows:"),
+    ("pages/detection.py", "오류 검출", ":material/fact_check:"),
 ]
 
 # 픽셀 아트 컴퓨터 그림 (웃는 얼굴 모니터) - 창 제목 줄과 홈 화면에서 사용
@@ -85,8 +82,8 @@ PIXEL_COMPUTER_SVG = """
 # → 페이지를 이동할 때마다 파일을 다시 읽지 않아서 빠르다.
 @st.cache_data
 def load_cases():
-    """cases.json 파일을 읽어서 오류 목록(딕셔너리들의 리스트)으로 돌려준다."""
-    # encoding="utf-8": 한글이 깨지지 않도록 UTF-8 규칙으로 읽는다. (CASE 03과 관련!)
+    """cases.json 파일을 읽어서 사례 목록(딕셔너리들의 리스트)으로 돌려준다."""
+    # encoding="utf-8": 한글이 깨지지 않도록 UTF-8 규칙으로 읽는다.
     with open(DATA_PATH, encoding="utf-8") as file:
         return json.load(file)
 
@@ -100,7 +97,7 @@ def find_case(cases, case_id):
 
 
 def case_label(case):
-    """선택 상자나 버튼에 보여 줄 이름을 만든다. 예) BUG-001 · IME 입력 조합 상태 불일치"""
+    """선택 상자나 버튼에 보여 줄 이름을 만든다. 예) BUG-001 · 정수 오버플로 · 언더플로"""
     # :03d → 숫자를 세 자리로 맞춘다. (1 → 001)
     return f"BUG-{case['id']:03d} · {case['title']}"
 
@@ -269,22 +266,6 @@ def page_banner(icon_name, english, korean, description):
     """)
 
 
-def case_card(case):
-    """오류 카드 한 장의 내용(분류, 번호, 전문용어 제목, 쉬운 이름, 요약)을 그린다."""
-    category_icon = CATEGORY_ICONS[case["category"]]
-    render_html(f"""
-        <div class="bt-card">
-            <div class="bt-card-top">
-                <span class="bt-tag">{icon(category_icon)} {escape(case['category'])}</span>
-                <span class="bt-no">BUG-{case['id']:03d}</span>
-            </div>
-            <div class="bt-card-title">{escape(case['title'])}</div>
-            <div class="bt-card-nick">“{escape(case['nickname'])}”</div>
-            <div class="bt-card-summary">{escape(case['summary'])}</div>
-        </div>
-    """)
-
-
 def apply_style():
     """앱 전체 디자인(CSS): 화면을 가득 채우는 베이지 레트로 CRT 모니터 + 픽셀 스타일"""
     render_html("""
@@ -318,6 +299,10 @@ def apply_style():
         .block-container { max-width: 100%; padding: 10px 16px 16px; }   /* 모니터가 화면 폭을 가득 채우도록 */
         [data-testid="stVerticalBlock"] { gap: 0.55rem; }          /* 요소 사이 간격을 촘촘하게 */
         [data-testid="stHorizontalBlock"] { gap: 0.6rem; }
+        /* Streamlit은 글 상자 아래쪽 여백을 -16px로 두어서, HTML 상자(비트 칸, 표 등)가 아래 요소와 겹쳐 보였다.
+           페이지 내용 상자 안에서, HTML로 그린 상자(첫 칸이 div 또는 svg 그림)일 때만 여백을 0으로 되돌려 겹치지 않게 한다. */
+        .st-key-win_body [data-testid="stMarkdownContainer"]:has(> div),
+        .st-key-win_body [data-testid="stMarkdownContainer"]:has(> svg) { margin-bottom: 0 !important; }
 
         /* ===== 4) 글꼴 ===== */
         .stMarkdown p, .stMarkdown li, [data-testid="stWidgetLabel"] p {
@@ -329,6 +314,7 @@ def apply_style():
         h1, h2, h3, h4 { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; letter-spacing: -0.3px; }
         h2 { font-size: 1.45rem !important; } h3 { font-size: 1.15rem !important; }
         code, pre { font-family: 'Nanum Gothic Coding', monospace !important; }
+        .stMarkdown code { font-size: 0.98rem !important; font-weight: 700; color: var(--ink) !important; }   /* 글 사이의 짧은 예시(10111 등)가 잘 보이게 */
         .bt-icon {
             font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; font-size: 1.15em;
             line-height: 1; vertical-align: -0.18em; display: inline-block; letter-spacing: normal;
@@ -372,7 +358,6 @@ def apply_style():
         .win-min-note { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); background: var(--paper); border: 3px dashed var(--ink); padding: 10px 14px; }
         /* 최대화: 베이지 틀을 얇게 줄여서 화면이 브라우저를 꽉 채운다 */
         .st-key-crt_max { background: #D9CCAE; border: 3px solid #B9A884; border-radius: 16px; padding: 6px; gap: 0; }
-        @keyframes blink { 50% { opacity: 0; } }
 
         /* 모니터 아래쪽: 스피커, 불빛, 플로피 디스크, 전원 버튼 */
         .px-panel { display: flex; align-items: center; justify-content: space-between; gap: 2vw; padding: clamp(12px, 1.6vw, 26px) 1vw 2px; }
@@ -423,23 +408,19 @@ def apply_style():
 
         /* ===== 7) 페이지 배너 (예: ERROR CATALOG · 오류 도감) ===== */
         .bt-banner {
-            background: var(--lime); margin: 10px 6px 14px; padding: 10px 18px; text-align: center;
+            background: var(--lime); margin: 8px 6px 10px; padding: 6px 18px; text-align: center;
             box-shadow: 0 -5px 0 0 var(--ink), 0 5px 0 0 var(--ink), -5px 0 0 0 var(--ink), 5px 0 0 0 var(--ink);
         }
-        .bt-banner-main { display: flex; align-items: center; justify-content: center; gap: 14px; color: var(--ink); }
-        .bt-banner-main .bt-icon { font-size: 2rem; }
-        .bt-banner-en { font-family: 'Press Start 2P', monospace; font-size: 1.45rem; }
-        .bt-banner-ko { font-family: 'Galmuri11', sans-serif; font-weight: 700; font-size: 1.2rem; }
-        .bt-banner-desc { color: var(--ink); font-size: 0.92rem; font-weight: 600; margin-top: 4px; }
+        /* 배너는 한 줄에: 아이콘 + 영어 이름 + 한글 이름 + 설명 (화면 공간을 아끼려고) */
+        .bt-banner { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 18px; }
+        .bt-banner-main { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--ink); }
+        .bt-banner-main .bt-icon { font-size: 1.6rem; }
+        .bt-banner-en { font-family: 'Press Start 2P', monospace; font-size: 1.15rem; }
+        .bt-banner-ko { font-family: 'Galmuri11', sans-serif; font-weight: 700; font-size: 1.1rem; }
+        .bt-banner-desc { color: var(--ink); font-size: 0.92rem; font-weight: 600; }
 
-        /* ===== 8) 오류 카드 ===== */
-        .bt-card-top { display: flex; justify-content: space-between; align-items: center; }
-        .bt-no { font-family: 'Galmuri11', monospace; color: var(--ink); font-size: 0.85rem; font-weight: 700; }
-        .bt-tag { font-family: 'Galmuri11', sans-serif; color: var(--ink); font-size: 0.85rem; font-weight: 700; background: var(--lime-soft); border: 2px solid var(--ink); padding: 2px 8px; }
-        .bt-card-title { color: var(--ink); font-size: 1.05rem; font-weight: 800; line-height: 1.4; margin-top: 8px; }
-        .bt-card-nick { color: #2F6B2A; font-size: 0.9rem; font-weight: 700; margin: 2px 0 4px 0; }
-        /* 요약은 두 줄까지만 보여 준다 (카드 높이를 일정하게, 스크롤을 줄이려고) */
-        .bt-card-summary { color: var(--dim); font-size: 0.88rem; line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        /* ===== 8) 사례의 쉬운 이름 (따옴표 문장) ===== */
+        .bt-card-nick { color: #2F6B2A; font-size: 0.95rem; font-weight: 700; margin: 2px 0 4px 0; }
 
         /* ===== 9) 테두리 상자, 입력창, 선택 상자, 탭 ===== */
         div[data-testid="stVerticalBlockBorderWrapper"] { background: var(--paper); border-radius: 0; border: 3px solid var(--ink); padding: 10px 12px; }
@@ -449,10 +430,6 @@ def apply_style():
         [data-testid="stTabs"] button p { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; font-size: 1rem !important; color: var(--ink) !important; }
         /* 현상 실험실 꺾은선 그래프(SVG) */
         .lab-chart { width: 100%; height: auto; margin-bottom: 14px; background: var(--paper); border: 3px solid var(--ink); font-family: 'Noto Sans KR', sans-serif; }
-        /* 실험 실행 전, 결과가 나올 자리의 안내 상자 (점선 테두리) */
-        .lab-waiting { border: 3px dashed var(--ink); background: rgba(251, 253, 241, .6); color: var(--ink); text-align: center;
-                       padding: 40px 16px; line-height: 1.8; font-size: 0.98rem; min-height: 330px; display: flex; flex-direction: column; justify-content: center; }
-        .lab-waiting-icon { font-family: 'Press Start 2P', monospace; font-size: 1.8rem; margin-bottom: 8px; }
         .stMarkdown a { color: #2F6B2A; text-decoration: underline; font-weight: 600; }
         hr { border-color: var(--ink) !important; opacity: .3; margin: 0.4rem 0 !important; }
 
@@ -487,13 +464,24 @@ def apply_style():
         .bt-flow-out .bt-icon, .bt-flow-out .bt-flow-name { color: var(--red); }
         .bt-flow-arrow { align-self: center; color: var(--ink); font-size: 1.4rem; font-weight: 800; }
 
-        /* 단계별 추적 기록 (#01 → #02 …) */
-        .bt-step { display: flex; gap: 10px; align-items: flex-start; }
+        /* 단계 번호표 (#01 → #02 …) */
         .bt-step-no { flex: 0 0 44px; height: 36px; text-align: center; line-height: 32px; background: var(--lime); color: var(--ink); border: 2px solid var(--ink); font-family: 'Galmuri11', monospace; font-weight: 700; }
-        .bt-step-text { line-height: 1.6; font-size: 0.93rem; color: var(--text); }
         .bt-basis { display: inline-block; font-family: 'Galmuri11', monospace; font-size: 0.78rem; font-weight: 700; padding: 0 6px; margin-bottom: 2px; background: var(--paper); }
         .bt-basis-ok { color: #2F6B2A; border: 2px solid #2F6B2A; }
         .bt-basis-guess { color: var(--yellow); border: 2px solid var(--yellow); }
+
+        /* 0과 1을 픽셀 칸으로 (현상 실험실 · 오류 검출에서 함께 사용)
+           .one = 1(라임) / .zero = 0 / .sign = 부호 비트(빨간 테두리) / .flip = 뒤집힌 칸(빨강) / .par = 패리티 칸(파랑) */
+        .bits-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); margin: 8px 0 4px; }
+        .bits { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+        .bits .byte { display: flex; gap: 2px; }
+        .bits span { width: 20px; height: 28px; line-height: 24px; text-align: center; border: 2px solid var(--ink);
+                     font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); }
+        .bits .one { background: var(--lime); }
+        .bits .zero { background: var(--paper); }
+        .bits .sign { outline: 3px solid var(--red); outline-offset: 1px; }
+        .bits .flip { background: var(--red); color: #FFFFFF; }
+        .bits .par { background: #D6E8F7; border-color: var(--sky); color: var(--sky); margin-left: 6px; }
 
         /* 작은 이름표 (BUG-001, 분류, 기술 등) */
         .bt-badge { display: inline-block; font-family: 'Galmuri11', monospace; font-size: 0.82rem; font-weight: 700; border: 2px solid var(--ink); padding: 1px 8px; margin: 0 4px 4px 0; color: var(--ink); background: var(--paper); }
@@ -532,7 +520,7 @@ def apply_style():
                      border-bottom: 3px solid var(--ink); padding-bottom: 4px; margin: 22px 0 10px; }
 
         /* ===== 11-5) 사례 선택 상자: 눈에 잘 띄게 (라임색 띠 + 큰 글자) ===== */
-        .st-key-case_pick { background: var(--lime); padding: 10px 14px 12px; margin: 4px 6px 6px;
+        .st-key-case_pick { background: var(--lime); padding: 2px 14px 4px; margin: 4px 6px 10px;
                             box-shadow: 0 -4px 0 0 var(--ink), 0 4px 0 0 var(--ink), -4px 0 0 0 var(--ink), 4px 0 0 0 var(--ink); }
         .st-key-case_pick [data-testid="stWidgetLabel"] p { font-family: 'Galmuri11', sans-serif !important; font-size: 1.05rem !important; }
         .st-key-case_pick div[data-baseweb="select"] > div { min-height: 52px; border-width: 4px; }
