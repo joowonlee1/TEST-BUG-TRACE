@@ -36,7 +36,7 @@ def save_filters():
 
 
 def category_label(category):
-    """분류 버튼에 아이콘을 붙인다. 예) "입력" → ":material/keyboard: 입력" """
+    """분류 버튼에 아이콘을 붙인다. 예) "정수" → ":material/pin: 정수" """
     return f":material/{CATEGORY_ICONS[category]}: {category}"
 
 
@@ -48,7 +48,7 @@ def show_filters():
         st.text_input(
             "검색",
             key="catalog_keyword",
-            placeholder="🔍 오류 이름이나 용어를 입력하세요. 예) 2의 보수, 0.1, 인코딩, 한글",
+            placeholder="🔍 오류 이름이나 용어를 입력하세요. 예) 2의 보수, 2038, 0.1, 언더플로",
             on_change=save_filters,
             label_visibility="collapsed",
         )
@@ -69,14 +69,15 @@ def show_filters():
 # -------------------------------------------------------------
 
 def show_reading_order(cases):
-    """사례 5개가 어떤 질문으로 이어지는지 한 줄 흐름으로 보여 준다."""
+    """사례들이 어떤 질문으로 이어지는지 한 줄 흐름으로 보여 준다."""
     steps = " ▶ ".join(f"<span>BUG-{case['id']:03d} {escape(case['category'])}</span>" for case in cases)
     render_html(f"""
         <div class="bt-box bt-key">
             <div class="bt-box-label">{icon("route")} 탐구 순서 · 이 순서로 읽으면 이해가 쉬워요</div>
-            <div>수업에서 배운 <b>정수(2의 보수)</b>에서 출발해 → <b>실수</b>는 어떻게 저장될까? →
-            <b>글자</b>도 숫자로 저장된다면? → <b>한글</b>은 어떻게 조합될까? 로 이어집니다.</div>
-            <div class="cat-flow">{steps}</div>
+            <div>수업에서 배운 <b>정수(2의 보수)</b>는 칸이 정해져 있으면 끝을 넘을 때 어떻게 될까? →
+            소수점이 있는 <b>실수</b>는 같은 칸 안에 어떻게 저장되고, 어디서 한계가 생길까? →
+            망가진 데이터를 컴퓨터는 어떻게 <b>알아챌까?</b> (오류 검출)</div>
+            <div class="cat-flow">{steps} ▶ <span>오류 검출</span></div>
         </div>
     """)
 
@@ -110,7 +111,7 @@ def show_case_row(case):
                     <div class="bt-box-label">💡 핵심 원리</div>
                     <b>{escape(case['key_point'])}</b>
                 </div>
-                <div style="font-size:0.9rem;color:var(--dim)">원인 유형: {escape(CAUSE_TYPES[case['cause_type']])}</div>
+                <div style="font-size:0.9rem;color:var(--dim)">{escape(case['cause_type'])}: {escape(CAUSE_TYPES[case['cause_type']])}</div>
             """)
             if st.button("원인 추적하기 ▶", key=f"catalog_open_{case['id']}", type="primary", width="stretch"):
                 open_case(case["id"])
@@ -129,7 +130,7 @@ def show_case_cards(results):
 all_cases = load_cases()
 
 with crt_frame("pages/catalog.py", "CATALOG"):
-    page_banner("menu_book", "ERROR CATALOG", "오류 도감", f"비트 표현에서 출발한 {len(all_cases)}가지 디지털 오류를 탐구 순서대로 살펴봅니다.")
+    page_banner("menu_book", "ERROR CATALOG", "오류 도감", f"숫자를 정해진 비트에 저장해서 생기는 {len(all_cases)}가지 오류를 깊이 살펴봅니다.")
     show_reading_order(all_cases)        # 1) 탐구 순서
     restore_filters()                    # 2) 저장해 둔 검색 조건 되살리기
     show_filters()                       # 3) 검색창 + 분류 버튼

@@ -2,8 +2,8 @@
 # pages/anatomy.py  (원인 해부실)
 # 오류 하나를 골라 위에서 아래로 '추적 순서'대로 분석한다.
 #   ① 제목 → ② 핵심 원리(가장 크게) → ③ 먼저 알아 둘 용어 → ④ 증상 · 정상이라면 · 실제로는 (+ 직접 관찰)
-#   → ⑤ 처리 과정(입력 → 처리 → 출력) → ⑥ 원인 추적 기록 #01~#04 (문서로 확인 = 누르면 문서가 열림 / 추정)
-#   → ⑦ 실험실 버튼 → ⑧ 출처 → ⑨ 탭: 자주 생기는 곳 / 해결 방법 / 관련 사례
+#   → ⑤ 처리 과정(입력 → 처리 → 출력) → ⑥ 원인 추적 기록 #01~#05 (문서로 확인 = 누르면 문서가 열림 / 추정)
+#   → ⑦ 관련 영상(있을 때만) → ⑧ 실험실 버튼 → ⑨ 출처 → ⑩ 탭: 자주 생기는 곳 / 해결 방법 / 관련 사례
 # =============================================================
 
 from html import escape           # 글자 속 <, > 기호를 안전하게 바꾸는 함수
@@ -38,18 +38,22 @@ def move_to_case(case_id):
 
 
 def show_case_selector(cases):
-    """분석할 오류를 고르는 선택 상자를 보여 준다."""
-    case_ids = [case["id"] for case in cases]   # [1, 2, 3, 4, 5]
+    """분석할 사례를 고르는 버튼(라디오)을 보여 준다. 사례가 2개라 펼쳐 놓아야 한눈에 보인다."""
+    case_ids = [case["id"] for case in cases]   # [1, 2]
     restore_selected_case(case_ids)
     # key="case_pick": 라임색 띠 상자 (CSS로 눈에 띄게 꾸민다)
-    with st.container(key="case_pick"):
+    # 안내 글과 사례 버튼을 한 줄에 놓아서 세로 공간을 아낀다.
+    with st.container(key="case_pick", horizontal=True, vertical_alignment="center"):
+        render_html('<div class="pick-label">🔎 분석할 사례</div>')
         # format_func: 선택지에 번호 대신 "BUG-001 · 제목"처럼 보여 준다.
-        st.selectbox(
-            "🔎 분석할 사례를 고르세요 (5개)",
+        st.radio(
+            "분석할 사례",
             case_ids,
             key="anatomy_case",
             format_func=lambda case_id: case_label(find_case(cases, case_id)),
             on_change=remember_case,
+            horizontal=True,
+            label_visibility="collapsed",
         )
 
 
@@ -176,8 +180,27 @@ def show_sources(case):
     render_html(f'{section_label("library_books", "SOURCES", "출처")}<div class="bt-box"><ol class="an-sources">{items}</ol></div>')
 
 
+def show_video(case):
+    """⑦ 관련 영상: 데이터에 video가 있는 사례에서만 YouTube 영상을 바로 재생할 수 있게 넣는다."""
+    video = case["video"]               # {"title": "...", "url": "..."} 또는 None
+    render_html(section_label("smart_display", "VIDEO", "영상으로 한 번 더"))
+    video_column, guide_column = st.columns([3, 2], vertical_alignment="center")
+    with video_column:
+        st.video(video["url"])          # st.video: YouTube 주소를 넣으면 화면 안에서 재생된다
+    with guide_column:
+        render_html(f"""
+            <div class="bt-box bt-obs">
+                <div class="bt-box-label">{icon("play_circle")} {escape(video['title'])}</div>
+                이 영상에서 확인할 것<br>
+                ① 유닉스 시간이 무엇인지<br>
+                ② 왜 2038년 1월 19일에 문제가 생기는지<br>
+                ③ 64비트로 바꾸는 해결 방법
+            </div>
+        """)
+
+
 def show_lab_link(case):
-    """실험실로 가는 버튼 (실험할 수 있는 오류에서만 부른다)"""
+    """실험실로 가는 버튼: 이 사례와 연결된 실험을 열어 둔 채로 이동한다."""
     if st.button("이 원리를 현상 실험실에서 직접 확인하기", icon=":material/science:", type="primary", width="stretch"):
         # 어떤 실험을 열지 저장해 두고 실험실로 이동한다.
         st.session_state["saved_lab"] = case["lab"]
@@ -227,6 +250,8 @@ def apply_anatomy_style():
     render_html("""
         <style>
         .an-title h2 { margin: 2px 0 0 !important; }
+        .pick-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1.05rem; white-space: nowrap; margin-right: 10px; }
+        .st-key-case_pick > div { width: auto !important; flex: none !important; }
         .an-summary { color: var(--text); font-size: 1.02rem; line-height: 1.7; }
         /* 같은 높이의 3칸 격자 (증상 · 정상이라면 · 실제로는) */
         .an-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -260,7 +285,8 @@ with crt_frame("pages/anatomy.py", "ANATOMY"):
     show_symptom_row(current_case)            # ④ 증상 · 정상이라면 · 실제로는 (+ 직접 관찰)
     show_flow(current_case)                   # ⑤ 처리 과정
     show_steps(current_case)                  # ⑥ 원인 추적 기록
-    if current_case["lab"]:                   # ⑦ 실험할 수 있는 사례(lab 값이 있음)만 실험실 버튼
-        show_lab_link(current_case)
-    show_sources(current_case)                # ⑧ 출처 (누르면 문서가 열린다)
-    show_detail_tabs(all_cases, current_case) # ⑨ 아래 탭
+    if current_case["video"]:                 # ⑦ 관련 영상이 있는 사례만
+        show_video(current_case)
+    show_lab_link(current_case)               # ⑧ 실험실 버튼
+    show_sources(current_case)                # ⑨ 출처 (누르면 문서가 열린다)
+    show_detail_tabs(all_cases, current_case) # ⑩ 아래 탭

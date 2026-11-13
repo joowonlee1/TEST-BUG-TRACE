@@ -87,9 +87,6 @@ def show_corners(position):
     """)
 
 
-# 홈 화면의 대표 타이틀 영역을 그린다.
-# 실제 페이지 이동은 별도 메뉴 컴포넌트가 처리한다.
-
 def show_hero():
     """픽셀 컴퓨터 그림 + BUG TRACE 제목 상자(+ 픽셀 커서)"""
     render_html(f"""
@@ -104,12 +101,12 @@ def show_hero():
 
 
 def show_intro():
-    """웹앱 간단 소개: 무엇을 하는 곳인지 한두 줄 + 대표 오류 3가지 이름표"""
+    """웹앱 간단 소개: 무엇을 하는 곳인지 한두 줄 + 다루는 주제 이름표"""
     render_html("""
         <div class="home-intro">
-            <div class="home-intro-main">컴퓨터에서 일어나는 신기하고 이해하기 어려운 오류의<br>원인과 작동 원리를 분석하는 디지털 오류 연구소</div>
-            <div class="home-intro-sub">5가지 오류를 공식 문서를 근거로 깊이 추적하고, 직접 계산해서 확인해요.</div>
-            <div class="home-chips"><span>IME 조합 오류</span><span>부동소수점 오차</span><span>문자 인코딩 불일치</span></div>
+            <div class="home-intro-main">조회수가 갑자기 음수가 되고, 0.1 + 0.2가 0.3이 아닌 이유는?<br>숫자를 정해진 비트에 저장하는 컴퓨터의 한계를 추적하는 디지털 오류 연구소</div>
+            <div class="home-intro-sub">2가지 사례를 공식 문서를 근거로 깊이 추적하고, 직접 계산해서 확인해요.</div>
+            <div class="home-chips"><span>정수 오버플로·언더플로</span><span>2038년 문제</span><span>실수 정밀도 오차·언더플로</span><span>오류 검출</span></div>
         </div>
     """)
 

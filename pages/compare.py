@@ -1,214 +1,128 @@
 # =============================================================
 # pages/compare.py  (오류 비교실)
-# 두 오류를 골라 증상과 원리를 나란히 비교하고,
-# 원인 유형·분류·키워드로 공통점과 차이점을 찾아 준다.
+# 정수(BUG-001)와 실수(BUG-002)를 항목별로 나란히 비교하고,
+# 오버플로·언더플로가 정수와 실수에서 각각 어떻게 다른지 2×2 칸으로 정리한다.
 # =============================================================
 
 from html import escape
 
 import streamlit as st
 
-from common import CAUSE_TYPES, case_label, crt_frame, find_case, load_cases, open_case, page_banner, render_html
+from common import CAUSE_TYPES, crt_frame, find_case, icon, load_cases, open_case, page_banner, render_html
 
-# 처음 들어왔을 때 비교할 두 오류: 같은 '표현의 한계' 유형인 BUG-001(정수)과 BUG-002(실수)
-# → "정수에서 배운 비트 표현이 실수에서는 어떻게 될까?"라는 탐구 출발점을 바로 비교한다
-DEFAULT_LEFT_ID = 1
-DEFAULT_RIGHT_ID = 2
+INTEGER_ID = 1    # 정수 사례 번호
+FLOAT_ID = 2      # 실수 사례 번호
 
-
-# -------------------------------------------------------------
-# 1. 비교할 오류 고르기 (상태 관리)
-# -------------------------------------------------------------
-
-def restore_choices():
-    """저장해 둔 비교 대상을 선택 상자에 다시 넣는다."""
-    if "compare_left" not in st.session_state:
-        st.session_state["compare_left"] = st.session_state.get("saved_left", DEFAULT_LEFT_ID)
-    if "compare_right" not in st.session_state:
-        st.session_state["compare_right"] = st.session_state.get("saved_right", DEFAULT_RIGHT_ID)
+# 비교 항목: (항목 이름, 정수 쪽 설명, 실수 쪽 설명)
+COMPARE_ROWS = [
+    ("저장하는 수", "소수점이 없는 수 (예: 조회수, 점수, 초)", "소수점이 있는 수 (예: 0.1, 3.14, 확률)"),
+    ("칸 나누는 방법", "32칸 전부 수 하나 (맨 앞 1칸 = 부호 비트)", "64칸을 부호 1 · 지수 11 · 가수 52로 나눔"),
+    ("음수 표현", "2의 보수 (뒤집고 1 더하기)", "부호 칸 하나만 1로 바꿈"),
+    ("담을 수 있는 범위", "-2,147,483,648 ~ 2,147,483,647 (32비트)", "약 ±1.8 × 10³⁰⁸ 까지, 0에 가장 가까운 수는 약 4.9 × 10⁻³²⁴"),
+    ("한계를 넘으면", "반대쪽 끝으로 넘어감 (최댓값 + 1 → 최솟값)", "너무 크면 inf(무한대), 너무 작으면 0이 됨"),
+    ("범위 안에서도 생기는 문제", "없음 (범위 안의 정수는 정확함)", "끝없는 2진 소수를 잘라서 생기는 반올림 오차"),
+    ("대표 사례", "2038년 문제, 강남스타일 조회수, 보잉 787 248일", "0.1 + 0.2 = 0.30000000000000004"),
+    ("해결 방법", "64비트로 늘리기, 계산 전에 범위 검사", "오차 범위로 비교, 10진수 자료형(Decimal), 로그로 바꿔 계산"),
+]
 
 
-def save_choices():
-    """비교 대상이 바뀔 때마다 저장한다."""
-    st.session_state["saved_left"] = st.session_state["compare_left"]
-    st.session_state["saved_right"] = st.session_state["compare_right"]
+def show_case_heads(integer_case, float_case):
+    """맨 위: 두 사례의 이름과 원인 유형을 나란히 보여 준다."""
+    heads = ""
+    for case in (integer_case, float_case):
+        heads += f"""
+            <div class="bt-box">
+                <span class="bt-badge bt-badge-on">BUG-{case['id']:03d}</span>
+                <span class="bt-badge">{escape(case['category'])}</span>
+                <span class="bt-badge">{escape(case['cause_type'])}</span>
+                <h3>{escape(case['title'])}</h3>
+                <div class="bt-card-nick">“{escape(case['nickname'])}”</div>
+                <div class="cmp-cause">{escape(CAUSE_TYPES[case['cause_type']])}</div>
+            </div>
+        """
+    render_html(f'<div class="cmp-heads">{heads}</div>')
 
 
-def choose_pair(left_id, right_id):
-    """추천 조합 버튼을 누르면 두 선택 상자의 값을 바꾼다."""
-    st.session_state["compare_left"] = left_id
-    st.session_state["compare_right"] = right_id
-    save_choices()
+def show_compare_table():
+    """비교 항목을 '항목 | 정수 | 실수' 3칸 표로 보여 준다. 한 줄의 칸 높이는 똑같이 맞춰진다."""
+    rows = '<div class="cmp-cell cmp-th">항목</div><div class="cmp-cell cmp-th">정수 (BUG-001)</div><div class="cmp-cell cmp-th">실수 (BUG-002)</div>'
+    for name, integer_text, float_text in COMPARE_ROWS:
+        rows += (f'<div class="cmp-cell cmp-name">{escape(name)}</div>'
+                 f'<div class="cmp-cell">{escape(integer_text)}</div>'
+                 f'<div class="cmp-cell">{escape(float_text)}</div>')
+    render_html(f'<div class="sec-label">{icon("table_chart")} TABLE · 항목별 비교</div><div class="cmp-table">{rows}</div>')
 
 
-def show_selectors(cases):
-    """비교할 두 오류를 고르는 선택 상자를 보여 준다."""
-    restore_choices()
-    case_ids = [case["id"] for case in cases]
-
-    def label(case_id):
-        """선택지에 보여 줄 이름"""
-        return case_label(find_case(cases, case_id))
-
-    left_column, right_column = st.columns(2)
-    with left_column:
-        st.selectbox("사례 A", case_ids, key="compare_left", format_func=label, on_change=save_choices)
-    with right_column:
-        st.selectbox("사례 B", case_ids, key="compare_right", format_func=label, on_change=save_choices)
+# 오버플로·언더플로 4가지: (제목, 상자 색, 설명, 예시 계산, 원인)
+FLOW_CELLS = {
+    ("정수", "오버플로"): ("넘어간다", "bt-err", "최댓값보다 커지면 가장 작은 음수로 넘어가요.",
+                          "2,147,483,647 + 1 → -2,147,483,648", "받아올림이 부호 비트까지 올라가 0이 1로 바뀜"),
+    ("정수", "언더플로"): ("넘어간다", "bt-err", "최솟값보다 작아지면 가장 큰 양수로 넘어가요.",
+                          "-2,147,483,648 − 1 → 2,147,483,647", "빌림 때문에 부호 비트가 1에서 0으로 바뀜"),
+    ("실수", "오버플로"): ("무한대가 된다", "bt-obs", "절댓값이 너무 커지면(약 1.8 × 10³⁰⁸ 초과) inf(무한대)가 돼요.",
+                          "1.8e308 × 10 → inf", "지수 칸(11비트)으로 더 큰 지수를 나타낼 수 없음"),
+    ("실수", "언더플로"): ("0이 된다", "bt-obs", "0에 너무 가까워지면 정밀도를 잃다가(비정규 수) 0이 돼요.",
+                          "4.9 × 10⁻³²⁴ ÷ 2 → 0.0", "지수 칸으로 더 작은 지수를 나타낼 수 없음"),
+}
 
 
-# -------------------------------------------------------------
-# 2. 나란히 비교하기
-# -------------------------------------------------------------
-
-def case_header(case):
-    """비교 칸 맨 위: 이름표 + 전문용어 제목 + 쉬운 이름"""
+def flow_cell(kind, flow):
+    """오버플로·언더플로 표의 칸 하나를 HTML로 만든다."""
+    result, box_class, text, example, cause = FLOW_CELLS[(kind, flow)]
     return f"""
-        <div class="bt-box">
-            <span class="bt-badge bt-badge-on">BUG-{case['id']:03d}</span>
-            <span class="bt-badge">{escape(case['category'])}</span>
-            <span class="bt-badge">{escape(case['cause_type'])}</span>
-            <h3>{escape(case['title'])}</h3>
-            <div class="bt-card-nick">“{escape(case["nickname"])}” · {escape(case['tech'])}</div>
+        <div class="bt-box {box_class}">
+            <div class="bt-box-label">{kind} {flow} = {result}</div>
+            {escape(text)}<br><code>{escape(example)}</code><br>
+            <span class="cmp-cause">원인: {escape(cause)}</span>
         </div>
     """
 
 
-def show_side_by_side(left_case, right_case):
-    """두 오류를 왼쪽·오른쪽에 나란히 보여 준다. 같은 줄의 상자는 높이가 똑같이 맞춰진다."""
-    # CSS 격자(grid) 2칸: 제목 → 증상 → 핵심 원리를 한 줄씩 쌓으면, 한 줄 안의 두 상자 높이가 같아진다.
-    cells = ""
-    for left_html, right_html in [
-        (case_header(left_case), case_header(right_case)),
-        (f'<div class="bt-box"><div class="bt-box-label">SYMPTOM · 증상</div>{escape(left_case["symptom"])}</div>',
-         f'<div class="bt-box"><div class="bt-box-label">SYMPTOM · 증상</div>{escape(right_case["symptom"])}</div>'),
-        (f'<div class="bt-box bt-key"><div class="bt-box-label">💡 KEY POINT · 핵심 원리</div><b>{escape(left_case["key_point"])}</b></div>',
-         f'<div class="bt-box bt-key"><div class="bt-box-label">💡 KEY POINT · 핵심 원리</div><b>{escape(right_case["key_point"])}</b></div>'),
-    ]:
-        cells += left_html + right_html
-    render_html(f'<div class="cmp-grid">{cells}</div>')
-    # 버튼은 상자들 아래에 따로 한 줄로 놓아서 두 버튼이 항상 같은 높이에 오게 한다.
-    left_button, right_button = st.columns(2)
-    with left_button:
-        if st.button(f"BUG-{left_case['id']:03d} 원인 추적 ▶", key="compare_open_left", width="stretch"):
-            open_case(left_case["id"])
-    with right_button:
-        if st.button(f"BUG-{right_case['id']:03d} 원인 추적 ▶", key="compare_open_right", width="stretch"):
-            open_case(right_case["id"])
-
-# -------------------------------------------------------------
-# 3. 공통점과 차이점 분석
-# -------------------------------------------------------------
-
-def find_common_keywords(left_case, right_case):
-    """두 오류의 키워드 중 겹치는 것을 찾는다."""
-    # set(집합)으로 바꾸고 & 연산을 하면 양쪽에 모두 있는 값만 남는다. (교집합)
-    return sorted(set(left_case["keywords"]) & set(right_case["keywords"]))
+def show_flow_matrix():
+    """오버플로와 언더플로를 정수·실수 각각에서 2×2 칸으로 비교한다."""
+    render_html(f"""
+        <div class="sec-label">{icon("grid_view")} OVER / UNDER · 오버플로와 언더플로, 정수와 실수에서</div>
+        <div class="bt-box bt-key">
+            <div class="bt-box-label">💡 한 줄 정리</div>
+            <b>정수</b>에서는 <b>최댓값과 최솟값</b>이 경계이고, <b>부동소수점</b>에서는 값의 <b>절댓값이 너무 크거나 0에 너무 가까울 때</b> 문제가 생겨요.
+        </div>
+        <div class="cmp-matrix">
+            <div></div><div class="cmp-cell cmp-th">오버플로 (너무 큼)</div><div class="cmp-cell cmp-th">언더플로 (너무 작음)</div>
+            <div class="cmp-cell cmp-name">정수</div>{flow_cell("정수", "오버플로")}{flow_cell("정수", "언더플로")}
+            <div class="cmp-cell cmp-name">실수</div>{flow_cell("실수", "오버플로")}{flow_cell("실수", "언더플로")}
+        </div>
+        <div class="cmp-note">※ 정수에서 최솟값 아래로 넘는 것도 넓게 '오버플로'라고 부르기도 해요. 이 연구소에서는 방향을 구분하려고 '언더플로'라고 불러요.</div>
+    """)
 
 
-# 두 사례의 공통점과 차이점을 계산하는 비교 기능이다.
-# 화면 배치는 별도 함수에서 담당해 비교 로직과 출력 코드를 구분한다.
-
-def compare_cases(left_case, right_case):
-    """두 오류를 비교해서 (공통점 목록, 차이점 목록)을 만든다."""
-    same = []        # 공통점
-    different = []   # 차이점
-
-    # (1) 원인 유형
-    if left_case["cause_type"] == right_case["cause_type"]:
-        cause = left_case["cause_type"]
-        same.append(f"두 오류 모두 **'{cause}'** 유형이에요. {CAUSE_TYPES[cause]}.")
-    else:
-        different.append(
-            f"원인 유형이 달라요. A는 **{left_case['cause_type']}**, B는 **{right_case['cause_type']}**이에요."
-        )
-
-    # (2) 분류
-    if left_case["category"] == right_case["category"]:
-        same.append(f"두 오류 모두 **{left_case['category']}** 분류에 속해요.")
-    else:
-        different.append(f"A는 **{left_case['category']}** 분류, B는 **{right_case['category']}** 분류예요.")
-
-    # (3) 겹치는 키워드
-    common_keywords = find_common_keywords(left_case, right_case)
-    if common_keywords:
-        same.append(f"겹치는 키워드: **{', '.join(common_keywords)}**")
-
-    # (4) 서로 관련 사례로 연결되어 있는지
-    if right_case["id"] in left_case["related"] or left_case["id"] in right_case["related"]:
-        same.append("두 오류는 서로 **관련 사례**로 연결되어 있어요.")
-
-    # (5) 사용하는 기술은 언제나 차이점에 넣는다
-    different.append(f"관련 기술: A는 **{left_case['tech']}**, B는 **{right_case['tech']}**")
-
-    return same, different
+def show_open_buttons():
+    """두 사례의 원인 해부실로 가는 버튼을 한 줄에 놓는다."""
+    integer_column, float_column = st.columns(2)
+    if integer_column.button("BUG-001 원인 추적 ▶", key="compare_open_int", width="stretch"):
+        open_case(INTEGER_ID)
+    if float_column.button("BUG-002 원인 추적 ▶", key="compare_open_float", width="stretch"):
+        open_case(FLOAT_ID)
 
 
-def show_analysis(left_case, right_case):
-    """공통점과 차이점을 탭으로 나누어 체크 목록으로 보여 준다."""
-    # 같은 오류를 두 번 고른 경우
-    if left_case["id"] == right_case["id"]:
-        st.warning("같은 오류를 골랐어요. 서로 다른 두 오류를 골라 보세요.")
-        return
-
-    same, different = compare_cases(left_case, right_case)
-    same_tab, different_tab = st.tabs([f"공통점 ({len(same)})", f"차이점 ({len(different)})"])
-    with same_tab:
-        if not same:
-            st.markdown("- 뚜렷한 공통점이 없어요. 원인이 서로 다른 오류예요.")
-        for item in same:
-            st.markdown(f"✅ {item}")
-    with different_tab:
-        for item in different:
-            st.markdown(f"↔️ {item}")
-
-
-# -------------------------------------------------------------
-# 4. 원인 유형별 묶음 (추천 비교 조합)
-# -------------------------------------------------------------
-
-def group_by_cause(cases):
-    """원인 유형마다 해당하는 오류들을 묶는다. 예) {"표현의 한계": [오류1, 오류2], ...}"""
-    groups = {}
-    for cause in CAUSE_TYPES:
-        groups[cause] = []
-    for case in cases:
-        groups[case["cause_type"]].append(case)
-    return groups
-
-
-def show_cause_groups(cases):
-    """같은 원인 유형의 오류끼리 묶어서 보여 주고, 버튼으로 바로 비교할 수 있게 한다."""
-    st.markdown("### 🗂️ 같은 원인, 다른 증상")
-    st.caption("겉으로는 전혀 달라 보여도 원인이 같은 오류들이에요. 버튼을 누르면 바로 비교해요.")
-
-    groups = group_by_cause(cases)
-    columns = st.columns(3)
-    # enumerate로 순서(0, 1, 2...)를 받아서 세 칸에 차례로 넣는다.
-    for order, (cause, group_cases) in enumerate(groups.items()):
-        with columns[order % 3]:                # 0,3번째는 첫째 칸 / 1,4번째는 둘째 칸 / 2,5번째는 셋째 칸
-            with st.container(border=True):
-                # 원인 유형 이름 + 설명 + 해당 오류 목록을 한 번에 그린다.
-                case_lines = "".join(f"<div>· {escape(case_label(case))}</div>" for case in group_cases)
-                render_html(f"""
-                    <div class="bt-box-label" style="color:var(--ink)">{escape(cause)}</div>
-                    <div style="font-size:0.85rem;color:var(--dim)">{escape(CAUSE_TYPES[cause])}</div>
-                    <div style="font-size:0.88rem;margin-top:4px">{case_lines}</div>
-                """)
-                # 오류가 2개 이상인 유형만 비교 버튼을 보여 준다.
-                if len(group_cases) >= 2:
-                    st.button(
-                        "이 두 오류 비교",
-                        key=f"pair_{cause}",
-                        on_click=choose_pair,
-                        args=(group_cases[0]["id"], group_cases[1]["id"]),
-                        icon=":material/balance:",
-                        width="stretch",
-                    )
-
-
-# 비교 격자 디자인: 2칸, 같은 줄의 상자는 높이를 맞춘다 (상자 안 여백 정리)
-COMPARE_STYLE = "<style>.cmp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; } .cmp-grid .bt-box { margin: 0; } .cmp-grid h3 { margin: 6px 0 0 !important; }</style>"
+# 비교 화면 디자인: 2칸 격자(사례 제목, 언더플로)와 3칸 표
+COMPARE_STYLE = """
+<style>
+.cmp-heads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-bottom: 8px; }
+.cmp-heads .bt-box { margin: 0; }
+.cmp-heads h3 { margin: 6px 0 0 !important; }
+.cmp-cause { font-size: 0.92rem; color: var(--dim); }
+.cmp-table { display: grid; grid-template-columns: 0.8fr 1.6fr 1.6fr; border: 3px solid var(--ink); background: var(--paper); margin-bottom: 8px; }
+.cmp-cell { padding: 8px 12px; border-bottom: 2px solid #C9D9A6; border-right: 2px solid #C9D9A6; font-size: 0.97rem; line-height: 1.6; }
+.cmp-th { background: var(--lime); font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); border-bottom: 3px solid var(--ink); }
+.cmp-name { font-weight: 800; color: var(--ink); background: var(--lime-soft); }
+.cmp-matrix { display: grid; grid-template-columns: 90px 1fr 1fr; gap: 8px; align-items: stretch; margin-bottom: 4px; }
+.cmp-matrix .bt-box { margin: 0; }
+.cmp-matrix .cmp-name { display: flex; align-items: center; justify-content: center; border: 3px solid var(--ink); font-family: 'Galmuri11', sans-serif; }
+.cmp-matrix .cmp-th { border: 3px solid var(--ink); text-align: center; }
+.cmp-note { font-size: 0.88rem; color: var(--dim); margin: 6px 0 8px; }
+@media (max-width: 800px) { .cmp-heads, .cmp-table, .cmp-matrix { grid-template-columns: 1fr; } }
+</style>
+"""
 
 
 # ----- 실제 실행 순서 -----
@@ -216,10 +130,8 @@ all_cases = load_cases()
 render_html(COMPARE_STYLE)
 
 with crt_frame("pages/compare.py", "COMPARE"):
-    page_banner("compare_arrows", "ERROR COMPARE", "오류 비교실", "두 오류의 공통점과 차이점을 나란히 비교합니다.")
-    show_selectors(all_cases)                                          # 1) 두 오류 고르기
-    case_a = find_case(all_cases, st.session_state["compare_left"])    # 왼쪽 오류 데이터
-    case_b = find_case(all_cases, st.session_state["compare_right"])   # 오른쪽 오류 데이터
-    show_side_by_side(case_a, case_b)        # 2) 나란히 비교
-    show_analysis(case_a, case_b)            # 3) 공통점·차이점 분석 (탭)
-    show_cause_groups(all_cases)             # 4) 원인 유형별 묶음
+    page_banner("compare_arrows", "ERROR COMPARE", "오류 비교실", "정수와 실수, 두 사례의 같은 점과 다른 점을 나란히 비교합니다.")
+    show_case_heads(find_case(all_cases, INTEGER_ID), find_case(all_cases, FLOAT_ID))   # 1) 두 사례 이름
+    show_compare_table()                    # 2) 항목별 비교 표
+    show_flow_matrix()                      # 3) 오버플로·언더플로 × 정수·실수 (2×2)
+    show_open_buttons()                     # 4) 원인 해부실로 가는 버튼
