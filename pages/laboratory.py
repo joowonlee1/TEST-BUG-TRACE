@@ -98,6 +98,10 @@ LAB_FLOAT_STYLE = """
 .float-compare .value { display: block; margin: 6px 0; font-size: 1.08rem; font-weight: 750; overflow-wrap: anywhere; }
 .float-compare small { color: #415946; line-height: 1.45; }
 @media (max-width: 750px) { .float-compare { grid-template-columns: 1fr; } }
+/* 예측 선택지 + 실행 버튼 한 줄: 각 요소가 내용만큼만 차지하고 왼쪽부터 붙는다 */
+.st-key-float_prediction_row { justify-content: flex-start !important; gap: 10px; flex-wrap: wrap; }
+.st-key-float_prediction_row > [data-testid="stElementContainer"] { width: auto !important; flex: 0 0 auto !important; }
+.st-key-float_prediction_row div.stButton { padding-top: 0; }
 </style>
 """
 
@@ -325,8 +329,8 @@ CLOCK_TYPES = {
 
 # 살펴볼 순간: 이름 → 그 시계가 담을 수 있는 마지막 초
 MOMENTS = {
-    "2038-01-19 03:14:07 UTC (부호 있는 32비트의 끝)": (1 << 31) - 1,
-    "2106-02-07 06:28:15 UTC (부호 없는 32비트의 끝)": (1 << 32) - 1,
+    "2038년 1월 19일 · 옛 방식 시계가 셀 수 있는 마지막 1초": (1 << 31) - 1,
+    "2106년 2월 7일 · 부호 없는 32비트 시계가 셀 수 있는 마지막 1초": (1 << 32) - 1,
 }
 
 
@@ -404,6 +408,8 @@ def run_y2038_lab():
     seconds = MOMENTS[moment_name] + offset              # 실제로 흐른 초
 
     render_html(f'<div class="cal-now">⏱️ 실제로 흐른 시간: {seconds:,}초 → {escape(seconds_to_text(seconds))}</div>')
+    # 비트가 주인공: 32비트 칸을 달력보다 먼저 보여 준다 → 비트가 바뀌는 순간 아래 달력이 어떻게 되는지 이어서 본다
+    show_bits(to_signed(seconds, 32), 32, "부호 있는 32비트 칸에 담긴 비트 (빨간 테두리 = 부호 비트)")
     cards = ""
     broken = []                                          # 날짜가 틀어진 시계 이름 모음
     for clock_name, store in CLOCK_TYPES.items():
@@ -412,7 +418,6 @@ def run_y2038_lab():
             broken.append(clock_name)
         cards += calendar_card_html(clock_name, seconds, stored)
     render_html('<div class="cal-grid">' + cards + '</div>')
-    show_bits(to_signed(seconds, 32), 32, "32비트 칸에 담긴 비트 (빨간 테두리 = 부호 비트)")
 
     if broken:
         result_box("diff", f"{', '.join(broken)} 시계가 끝을 넘어 엉뚱한 날짜로 돌아갔어요!")
@@ -549,15 +554,17 @@ def show_float_prediction():
     st.markdown("#### 01 · 먼저 결과를 예상해 보세요")
     st.caption("일반 계산기에는 0.3으로 보이지만, Python으로 계산하면 어떨까요?")
     options = ["0.3", "0.30000000000000004", "계산할 수 없음"]
-    choice = st.radio(
-        "0.1 + 0.2의 Python 출력 결과는?", options,
-        key="float_prediction_choice", index=None, horizontal=True,
-        label_visibility="collapsed",
-        on_change=reset_float_prediction,
-    )
-    if st.button("계산 실행 · 정답 확인", key="float_prediction_reveal", disabled=choice is None):
-        st.session_state["float_prediction_shown"] = True
-        st.session_state["float_prediction_answer"] = choice
+    # 선택지 3개와 '계산 실행' 버튼을 한 줄에 놓아서 오른쪽 빈 공간을 쓴다
+    with st.container(key="float_prediction_row", horizontal=True, vertical_alignment="center"):
+        choice = st.radio(
+            "0.1 + 0.2의 Python 출력 결과는?", options,
+            key="float_prediction_choice", index=None, horizontal=True,
+            label_visibility="collapsed",
+            on_change=reset_float_prediction,
+        )
+        if st.button("계산 실행 · 정답 확인", key="float_prediction_reveal", type="primary", disabled=choice is None):
+            st.session_state["float_prediction_shown"] = True
+            st.session_state["float_prediction_answer"] = choice
     if st.session_state.get("float_prediction_shown", False):
         answer = st.session_state.get("float_prediction_answer")
         if answer == options[1]:
@@ -613,14 +620,20 @@ def halving_steps(start):
 # 언더플로 단계 표시 디자인: 3단계 칸(지금 단계만 켜짐) + 남은 유효 비트 53칸(하나씩 꺼짐)
 UNDERFLOW_STYLE = """
 <style>
-.uf-stages { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 8px; margin: 8px 0 10px; }
-.uf-stage { border: 3px solid #9DB98F; background: #F4F7E9; color: #7C8F78; text-align: center; padding: 8px 6px; font-family: 'Galmuri11', sans-serif; font-weight: 700; }
-.uf-stage small { display: block; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; font-size: 0.82rem; margin-top: 2px; }
+/* 64비트 그림 오른쪽 좁은 칸에 들어가도록 단계 3개를 세로로 쌓는다 */
+.uf-stages { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 8px; }
+.uf-arrow { text-align: center; line-height: 1; }
+/* 지금 값: 작은 이름 아래에 숫자 한 줄. 유효숫자 5자리로 줄이고 nowrap으로 '× 10⁻³⁰⁸'이 다음 줄로 떨어지지 않게 */
+.uf-value small { display: block; font-size: 0.85rem; font-weight: 700; color: var(--dim); }
+.uf-value span { white-space: nowrap; font-size: 1.15rem; }
+.uf-value { font-family: 'SupFix', 'Noto Sans KR', sans-serif; font-weight: 800; color: var(--ink); font-size: 1rem; margin-bottom: 6px; }
+.uf-stage { border: 3px solid #9DB98F; background: #F4F7E9; color: #7C8F78; text-align: center; padding: 5px 6px; font-family: 'Galmuri11', sans-serif; font-weight: 700; }
+.uf-stage small { display: block; font-family: 'SupFix', 'Noto Sans KR', sans-serif; font-weight: 500; font-size: 0.82rem; margin-top: 2px; }
 .uf-stage.on { border-color: var(--ink); background: var(--lime); color: var(--ink); }
 .uf-stage.on.zero { border-color: var(--red); background: #FBE7DF; color: var(--red); }
 .uf-arrow { font-weight: 800; color: var(--ink); }
-.uf-precision { display: flex; flex-wrap: wrap; gap: 3px; margin: 4px 0 2px; }
-.uf-precision i { width: 14px; height: 18px; border: 2px solid var(--ink); background: var(--lime); }
+.uf-precision { display: flex; flex-wrap: wrap; gap: 2px; margin: 4px 0 2px; }
+.uf-precision i { width: 9px; height: 16px; border: 2px solid var(--ink); background: var(--lime); }
 .uf-precision i.off { background: transparent; border-color: #B9C5AA; }
 .uf-precision-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 0.95rem; margin-top: 4px; }
 </style>
@@ -633,9 +646,10 @@ def show_underflow_stage(value, exponent, precision):
     on = lambda name: " on" if stage == name else ""                 # 지금 단계에만 'on' 이름표를 붙인다
     blocks = "".join('<i></i>' if index < precision else '<i class="off"></i>' for index in range(53))
     render_html(UNDERFLOW_STYLE + f"""
+        <div class="uf-value"><small>지금 값</small><span>{escape(readable_number(format(value, '.4e')))}</span></div>
         <div class="uf-stages">
-            <div class="uf-stage{on('normal')}">① 정상 수<small>53비트 정밀도 그대로</small></div><div class="uf-arrow">▶</div>
-            <div class="uf-stage{on('subnormal')}">② 비정규 수<small>지수 칸이 바닥, 정밀도가 줄어듦</small></div><div class="uf-arrow">▶</div>
+            <div class="uf-stage{on('normal')}">① 정상 수<small>53비트 정밀도 그대로</small></div><div class="uf-arrow">▼</div>
+            <div class="uf-stage{on('subnormal')}">② 비정규 수<small>지수 칸이 바닥, 정밀도가 줄어듦</small></div><div class="uf-arrow">▼</div>
             <div class="uf-stage zero{on('zero')}">③ 0이 되어 사라짐<small>더 담을 칸이 없음</small></div>
         </div>
         <div class="uf-precision-label">남은 유효 비트 {precision}칸 / 53칸</div>
@@ -651,16 +665,18 @@ def run_float_underflow_lab():
     first_subnormal = next(i for i, v in enumerate(values) if float_parts(v)[0] == 0)   # 처음으로 지수 칸이 모두 0이 된 횟수
     count = st.slider("2로 나눈 횟수", 0, len(values) - 1, first_subnormal - 1, key="uf_count")
     value = values[count]
-    exponent, mantissa, state = float_parts(value)
+    exponent, mantissa, _ = float_parts(value)          # _ = 상태 이름 (여기서는 단계 칸으로 보여 줘서 쓰지 않는다)
 
     # 정상 수는 가수 52칸 + 숨은 1칸 = 53비트의 유효숫자, 비정규 수는 가수 칸에서 실제로 쓰는 비트만 남는다
     precision = 53 if exponent else mantissa.bit_length()
-    show_underflow_stage(value, exponent, precision)
-    st.code(f"{count}번 나눔 → 값 = {readable_number(repr(value), in_code=True)}\n"
-            f"상태          : {state}\n"
-            f"지수 칸 값    : {exponent}  (0이 되면 더 작은 지수를 나타낼 수 없음)")
-    st.caption("읽는 법: 10⁻³⁰⁸은 '10의 -308제곱'이에요. 소수점 아래로 0이 307개 이어진 뒤에야 1이 나오는, 아주 작은 수예요.")
-    show_float_bits(value, f"{count}번 나눈 값의 64비트")
+    # 슬라이더 바로 아래에 '64비트 그림(왼쪽) + 지금 단계(오른쪽)'를 나란히 놓아 한 화면에서 함께 보이게 한다
+    bits_column, stage_column = st.columns([2.6, 1], vertical_alignment="top")
+    with bits_column:
+        show_float_bits(value, f"{count}번 나눈 값의 64비트 · 지수 칸 값 {exponent}")
+    with stage_column:
+        show_underflow_stage(value, exponent, precision)
+    st.caption("읽는 법: 10⁻³⁰⁸은 '10의 -308제곱'이에요. 소수점 아래로 0이 307개 이어진 뒤에야 1이 나오는, 아주 작은 수예요. "
+               "지수 칸 값이 0이 되면 더 작은 지수를 나타낼 수 없어요.")
 
     st.code(f"{first_subnormal - 1:>3}번 : 마지막 정상 수   {readable_number(repr(values[first_subnormal - 1]), in_code=True)}\n"
             f"{first_subnormal:>3}번 : 첫 비정규 수     {readable_number(repr(values[first_subnormal]), in_code=True)}\n"

@@ -307,6 +307,12 @@ def apply_style():
         @import url('https://cdn.jsdelivr.net/npm/galmuri@2.40.2/dist/galmuri.css');
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nanum+Gothic+Coding:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;800&display=swap');
 
+        /* 위첨자 글꼴(SupFix): 10⁻³⁰⁸ 같은 위첨자 글자만 한 글꼴에서 가져온다.
+           본문 글꼴(Noto Sans KR)에는 ¹²³만 있고 ⁰⁴⁵…⁻는 없어서, 글자마다 다른 글꼴로 그려져 크기가 들쭉날쭉했다.
+           unicode-range = 이 글꼴을 쓸 글자 범위 (위첨자 숫자와 기호만) / local() = 컴퓨터에 이미 있는 글꼴 */
+        @font-face { font-family: 'SupFix'; src: local('Segoe UI'), local('Arial'), local('Helvetica Neue'), local('DejaVu Sans');
+                     unicode-range: U+00B2-00B3, U+00B9, U+2070-207F; }
+
         /* ===== 2) 색 변수 (한곳에서만 정의) ===== */
         :root {
             --ink: #1F4D25;        /* 픽셀 테두리·진한 초록 (잉크 색) */
@@ -339,16 +345,16 @@ def apply_style():
         /* HTML로 그린 글(상자·카드)도 본문 글꼴로: 예전에는 Streamlit 기본 글꼴(Source Sans)이 섞여서
            괄호·숫자·화살표만 다른 모양으로 보였다. 픽셀 글꼴 같은 따로 정한 글꼴은 그대로 유지된다.
            word-break: keep-all = 한글 낱말 중간에서 줄을 바꾸지 않는다 (예: '못한/다'처럼 한 글자만 넘어가지 않게) */
-        [data-testid="stMarkdownContainer"] { font-family: 'Noto Sans KR', sans-serif; word-break: keep-all; overflow-wrap: break-word; }
+        [data-testid="stMarkdownContainer"] { font-family: 'SupFix', 'Noto Sans KR', sans-serif; word-break: keep-all; overflow-wrap: break-word; }
         .stMarkdown p, .stMarkdown li, [data-testid="stWidgetLabel"] p {
-            font-family: 'Noto Sans KR', sans-serif; font-size: 1.02rem; line-height: 1.75; color: var(--text);
+            font-family: 'SupFix', 'Noto Sans KR', sans-serif; font-size: 1.02rem; line-height: 1.75; color: var(--text);
         }
         [data-testid="stCaptionContainer"] p { color: var(--dim); font-size: 0.88rem; }
         /* 글꼴 나누기: 픽셀 글꼴(Galmuri)은 버튼·배너·이름표 같은 '짧은 글자'에만 쓰고,
            제목·설명처럼 읽어야 하는 글은 본문 글꼴(Noto Sans KR)로 → 레트로 느낌은 살리고 읽기는 편하게 */
-        h1, h2, h3, h4 { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; letter-spacing: -0.3px; }
+        h1, h2, h3, h4 { font-family: 'SupFix', 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; letter-spacing: -0.3px; }
         h2 { font-size: 1.45rem !important; } h3 { font-size: 1.15rem !important; }
-        code, pre { font-family: 'Nanum Gothic Coding', 'Noto Sans KR', monospace !important; }
+        code, pre { font-family: 'Nanum Gothic Coding', 'SupFix', 'Noto Sans KR', monospace !important; }
         /* 코드 상자(계산 결과 등) 글자가 다른 글보다 작아 보여서 본문과 비슷한 크기로 키운다 */
         [data-testid="stCode"] pre, [data-testid="stCode"] code { font-size: 1.02rem !important; line-height: 1.65 !important; }
         .stMarkdown code { font-size: 0.98rem !important; font-weight: 700; color: var(--ink) !important; }   /* 글 사이의 짧은 예시(10111 등)가 잘 보이게 */
@@ -369,7 +375,7 @@ def apply_style():
         /* 화면: 가운데는 밝고 가장자리는 초록빛으로 어두워지는 CRT 유리 + 가로 주사선 + 진한 초록 테두리
            box-shadow 바깥쪽 고리 2개 = 화면이 플라스틱 틀 안으로 쏙 들어간 '홈'처럼 보이게 한다 */
         .st-key-crt_screen {
-            border-radius: clamp(18px, 2.6vw, 40px); padding: clamp(6px, 0.7vw, 10px) clamp(12px, 1.8vw, 30px) clamp(8px, 1vw, 16px); gap: 0.3rem;
+            border-radius: clamp(18px, 2.6vw, 40px); padding: clamp(8px, 0.9vw, 12px) clamp(12px, 1.8vw, 30px) clamp(8px, 1vw, 16px); gap: 0.3rem;
             background:
                 repeating-linear-gradient(0deg, rgba(31, 77, 37, .07) 0px, rgba(31, 77, 37, .07) 1px, transparent 2px, transparent 4px),
                 radial-gradient(ellipse at 50% 45%, #F8FBEA 0%, #EEF5D6 55%, #D9E8AE 85%, #B7D27F 100%);
@@ -382,8 +388,8 @@ def apply_style():
         /* 제목 줄은 얇게: 내용이 보이는 칸을 넓히려고 그림과 글자 크기를 줄였다 */
         .win-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding-bottom: 0; border-bottom: 3px solid var(--ink); }
         .win-logo { display: flex; align-items: center; gap: 8px; }
-        .win-logo .px-computer { width: 44px; height: auto; }
-        .win-title { font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: var(--ink); letter-spacing: 1px; }
+        .win-logo .px-computer { width: 36px; height: auto; }   /* 제목 줄을 조금씩 줄여 내용 칸을 넓힌다 */
+        .win-title { font-family: 'Press Start 2P', monospace; font-size: 1.05rem; color: var(--ink); letter-spacing: 1px; }
         .win-path { flex: 1; min-width: 0; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); font-size: 0.95rem; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         /* 제목과 버튼을 동일한 높이의 한 줄로 정렬한다. */
         /* :not(.st-key-win_btns) = 창 버튼 상자는 빼고, 제목 줄의 두 칸(제목 | 버튼)에만 격자를 적용한다.
@@ -391,11 +397,13 @@ def apply_style():
         .st-key-crt_titlebar [data-testid="stHorizontalBlock"]:not(.st-key-win_btns) { display: grid !important; grid-template-columns: minmax(0, 1fr) 132px !important; gap: 0 !important; align-items: center !important; }
         .st-key-crt_titlebar [data-testid="stColumn"] { min-width: 0 !important; width: 100% !important; }
         .st-key-crt_titlebar [data-testid="stColumn"] > div { min-width: 0 !important; }
-        .st-key-crt_titlebar .win-bar { height: 40px; min-height: 40px; padding: 0 8px 0 0; border-bottom: 0; justify-content: flex-start; gap: 12px; }
+        .st-key-crt_titlebar .win-bar { height: 36px; min-height: 36px; overflow: visible; padding: 0 8px 0 0; border-bottom: 0; justify-content: flex-start; gap: 12px; }
         .st-key-crt_titlebar .win-path { flex: 0 1 auto; }
-        .st-key-crt_titlebar .st-key-win_btns { height: 40px; justify-content: flex-end; gap: 5px; }
-        .st-key-crt_titlebar .st-key-win_btns div.stButton button { width: 38px; min-width: 38px; height: 36px; min-height: 36px; margin: 0; }
+        .st-key-crt_titlebar .st-key-win_btns { height: 36px; justify-content: flex-end; gap: 5px; }
+        .st-key-crt_titlebar .st-key-win_btns div.stButton button { width: 34px; min-width: 34px; height: 30px; min-height: 30px; margin: 0; }
         .st-key-crt_titlebar [data-testid="stVerticalBlock"] { gap: 0 !important; }
+        /* 제목 글 상자의 아래 여백(-16px) 때문에 제목 줄이 실제보다 낮게 계산되어 메뉴가 제목을 덮었다 → 0으로 */
+        .st-key-crt_titlebar [data-testid="stMarkdownContainer"] { margin-bottom: 0 !important; }
         /* 진짜 창 버튼(— □ ×): 작은 정사각형 픽셀 버튼, 오른쪽 끝에 붙인다 */
         /* flex-wrap: nowrap = 화면이 좁아도 버튼이 다음 줄로 떨어지지 않고 한 줄에 놓인다 */
         .st-key-win_btns { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex-wrap: nowrap !important; }
@@ -412,9 +420,19 @@ def apply_style():
         [class*="st-key-compact_"] div.stButton button p { font-size: 0.92rem !important; }
         [class*="st-key-compact_"] div[data-testid="stRadio"] > div[role="radiogroup"] > label { min-height: 34px; min-width: 62px; padding: 2px 10px; margin: 3px; }
         [class*="st-key-compact_"] div[data-testid="stRadio"] > div[role="radiogroup"] > label p { font-size: 0.92rem !important; }
+        /* 슬라이더: 실험을 조절하는 핵심 도구라 눈에 띄게. 테두리 상자 + 두꺼운 막대 + 라임색 네모 손잡이 + 큰 숫자 */
+        [data-testid="stSlider"] { background: var(--paper); border: 3px solid var(--ink); padding: 6px 18px 2px; box-shadow: 4px 4px 0 rgba(31,77,37,.2); }
+        [data-testid="stSlider"] [data-testid="stWidgetLabel"] p { font-family: 'Galmuri11', sans-serif !important; font-size: 1.02rem !important; }
+        [data-testid="stSlider"] [data-baseweb="slider"] > div > div { height: 10px !important; border: 2px solid var(--ink); border-radius: 0 !important; }
+        [data-testid="stSlider"] [role="slider"] { width: 24px !important; height: 24px !important; border-radius: 0 !important;
+                                                   background: var(--lime) !important; border: 3px solid var(--ink) !important; box-shadow: 3px 3px 0 rgba(31,77,37,.35) !important; }
+        [data-testid="stSlider"] [role="slider"]:hover { background: #D7F57E !important; }
+        [data-testid="stSliderThumbValue"] { font-family: 'Galmuri11', sans-serif !important; font-weight: 700 !important; font-size: 1rem !important;
+                                             color: #FFFFFF !important; background: var(--ink); padding: 0 8px; top: -30px !important; }
+        [data-testid="stSliderTickBar"] { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--dim) !important; }
         .compact-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 0.92rem; margin: 0 2px 0 6px; white-space: nowrap; }
         .st-key-win_btns div.stButton button { min-height: 30px; width: 34px; min-width: 34px; padding: 0; margin: 0 2px; }
-        .st-key-win_btns div.stButton button p { font-family: 'Noto Sans KR', sans-serif !important; font-size: 1.1rem !important; font-weight: 900 !important; }
+        .st-key-win_btns div.stButton button p { font-family: 'SupFix', 'Noto Sans KR', sans-serif !important; font-size: 1.1rem !important; font-weight: 900 !important; }
         .st-key-win_btns div.stButton button:hover { background: var(--lime); }
         /* 비밀 응원 팝업: 홈 화면의 픽셀 컴퓨터 SVG를 그대로 재사용 */
         .bt-support-surprise {
@@ -485,7 +503,7 @@ def apply_style():
         }
         div.stButton button:active, div[data-testid="stPageLink"] a:active { transform: translateY(3px); }   /* 누르면 살짝 내려간다 */
         div.stButton button p, div[data-testid="stPageLink"] a p {
-            font-family: 'Galmuri11', 'Noto Sans KR', sans-serif !important; font-size: 1.05rem !important;
+            font-family: 'Galmuri11', 'SupFix', 'Noto Sans KR', sans-serif !important; font-size: 1.05rem !important;
             font-weight: 700 !important; color: var(--ink) !important;
         }
         div.stButton button [data-testid="stIconMaterial"], div[data-testid="stPageLink"] a [data-testid="stIconMaterial"] { color: var(--ink) !important; font-weight: 700; margin-right: 8px; }   /* margin-right: 아이콘과 글자 사이 간격 */
@@ -495,7 +513,8 @@ def apply_style():
         div.stButton button[kind="primary"]:hover { background: #D7F57E; }
         /* 메뉴 버튼: 지금 있는 페이지는 라임색 */
         .st-key-nav_active div[data-testid="stPageLink"] a { background: var(--lime) !important; }
-        div[data-testid="stPageLink"] a { justify-content: center; min-height: 40px; margin: 4px 5px 8px; }   /* 메뉴 버튼은 조금 낮게 (위쪽 고정 부분 줄이기) */
+        div[data-testid="stPageLink"] a p { font-size: 0.98rem !important; }
+        div[data-testid="stPageLink"] a { justify-content: center; min-height: 34px; padding-top: 2px; padding-bottom: 2px; margin: 3px 5px 7px; }   /* 메뉴 버튼은 조금 낮게 (위쪽 고정 부분 줄이기) */
         div[data-testid="stPageLink"] a > span:first-child { margin-right: 10px; }   /* 아이콘을 감싼 칸 오른쪽에 간격 → 아이콘과 글자가 붙지 않게 */
         button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--sky) !important; outline-offset: 3px; }
 
@@ -518,11 +537,11 @@ def apply_style():
         /* ===== 9) 테두리 상자, 입력창, 선택 상자, 탭 ===== */
         div[data-testid="stVerticalBlockBorderWrapper"] { background: var(--paper); border-radius: 0; border: 3px solid var(--ink); padding: 10px 12px; }
         div[data-baseweb="input"] > div, div[data-baseweb="select"] > div { min-height: 44px; border-radius: 0; background-color: #FFFFFF; border: 3px solid var(--ink); }
-        [data-testid="stWidgetLabel"] p { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 700 !important; color: var(--ink) !important; }
+        [data-testid="stWidgetLabel"] p { font-family: 'SupFix', 'Noto Sans KR', sans-serif !important; font-weight: 700 !important; color: var(--ink) !important; }
         div[data-testid="stCodeBlock"], pre { border-radius: 0; }
-        [data-testid="stTabs"] button p { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; font-size: 1rem !important; color: var(--ink) !important; }
+        [data-testid="stTabs"] button p { font-family: 'SupFix', 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; font-size: 1rem !important; color: var(--ink) !important; }
         /* 현상 실험실 꺾은선 그래프(SVG) */
-        .lab-chart { width: 100%; height: auto; margin-bottom: 14px; background: var(--paper); border: 3px solid var(--ink); font-family: 'Noto Sans KR', sans-serif; }
+        .lab-chart { width: 100%; height: auto; margin-bottom: 14px; background: var(--paper); border: 3px solid var(--ink); font-family: 'SupFix', 'Noto Sans KR', sans-serif; }
         .stMarkdown a { color: #2F6B2A; text-decoration: underline; font-weight: 600; }
         hr { border-color: var(--ink) !important; opacity: .3; margin: 0.4rem 0 !important; }
 
@@ -609,7 +628,7 @@ def apply_style():
                        box-shadow: 0 -5px 0 0 var(--ink), 0 5px 0 0 var(--ink), -5px 0 0 0 var(--ink), 5px 0 0 0 var(--ink), 0 10px 0 0 rgba(31,77,37,.25); }
         .bt-keypoint .bt-icon { font-size: 2.4rem; }
         .bt-keypoint-label { font-family: 'Galmuri11', monospace; font-weight: 700; font-size: 0.9rem; }
-        .bt-keypoint-text { font-family: 'Noto Sans KR', sans-serif; font-weight: 800; font-size: 1.18rem; line-height: 1.55; }
+        .bt-keypoint-text { font-family: 'SupFix', 'Noto Sans KR', sans-serif; font-weight: 800; font-size: 1.18rem; line-height: 1.55; }
 
         /* ===== 11-3) 먼저 알아 둘 용어 (화면 폭에 맞춰 카드가 여러 줄로 놓인다) ===== */
         .bt-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 6px; }
@@ -619,7 +638,7 @@ def apply_style():
 
         /* ===== 11-4) 구역 제목 (어떤 현상인가 등) ===== */
         .sec-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1.08rem;
-                     border-bottom: 3px solid var(--ink); padding-bottom: 4px; margin: 22px 0 10px; }
+                     border-bottom: 3px solid var(--ink); padding-bottom: 4px; margin: 8px 0 8px; }   /* 위 여백을 줄여 구역 사이 빈 공간을 줄인다 */
 
         /* ===== 11-5) 사례 선택 상자: 눈에 잘 띄게 (라임색 띠 + 큰 글자) ===== */
         .st-key-case_pick { background: var(--lime); padding: 2px 14px 4px; margin: 4px 6px 10px;
@@ -635,7 +654,7 @@ def apply_style():
         /* ===== 11-7) 오류 도감의 넓은 사례 카드 ===== */
         .cat-guide { margin: 10px 8px 14px; padding: 10px 14px; background: var(--paper); border-left: 5px solid var(--ink); color: var(--ink); line-height: 1.6; word-break: keep-all; }
         .cat-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-        .cat-title { font-family: 'Noto Sans KR', sans-serif; font-weight: 800; color: var(--ink); font-size: 1.3rem; margin: 6px 0 2px; }
+        .cat-title { font-family: 'SupFix', 'Noto Sans KR', sans-serif; font-weight: 800; color: var(--ink); font-size: 1.3rem; margin: 6px 0 2px; }
         .cat-summary { font-size: 1rem; line-height: 1.7; color: var(--text); margin: 4px 0 8px; }
         .cat-terms { display: flex; flex-wrap: wrap; gap: 6px; }
         .cat-terms span { font-size: 0.9rem; background: var(--lime-soft); border: 2px solid var(--ink); padding: 2px 8px; color: var(--ink); cursor: help; }   /* cursor: help = 마우스 모양이 물음표로 바뀌어 설명이 있음을 알려 준다 */

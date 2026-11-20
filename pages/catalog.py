@@ -26,9 +26,9 @@ def show_reading_order(cases):
     render_html(f"""
         <div class="bt-box bt-key">
             <div class="bt-box-label">{icon("route")} 탐구 순서 · 이 순서로 읽으면 이해가 쉬워요</div>
-            <div>수업에서 배운 <b>정수(2의 보수)</b>는 칸이 정해져 있으면 끝을 넘을 때 어떻게 될까? →
-            소수점이 있는 <b>실수</b>는 같은 칸 안에 어떻게 저장되고, 어디서 한계가 생길까? →
-            망가진 데이터를 컴퓨터는 어떻게 <b>알아챌까?</b> (오류 검출)</div>
+            <div>① 수업에서 배운 <b>정수(2의 보수)</b>는 칸이 정해져 있으면 끝을 넘을 때 어떻게 될까?<br>
+            ② 소수점이 있는 <b>실수</b>는 같은 칸 안에 어떻게 저장되고, 어디서 한계가 생길까?<br>
+            ③ 망가진 데이터를 컴퓨터는 어떻게 <b>알아챌까?</b></div>
             <div class="cat-flow">{steps} ▶ <span>오류 검출</span></div>
         </div>
     """)
