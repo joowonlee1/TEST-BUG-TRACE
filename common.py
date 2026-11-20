@@ -107,7 +107,7 @@ def case_label(case):
 
 def search_cases(cases, keyword, category):
     """검색어(keyword)와 분류(category)로 오류 목록을 걸러 낸다."""
-    # 앞뒤 공백을 지우고 소문자로 바꿔서 "IME"와 "ime"를 같은 검색어로 본다.
+    # 앞뒤 공백을 지우고 소문자로 바꿔서 "IEEE"와 "ieee"를 같은 검색어로 본다.
     keyword = keyword.strip().lower()
     results = []
 
@@ -163,39 +163,75 @@ def icon(name):
 
 
 def toggle_window(state_name):
-    """창 상태(최소화 'win_min' / 최대화 'win_max')를 켜고 끈다. True ↔ False"""
+    """최대화 상태를 켜고 끈다."""
     # .get(이름, False): 저장된 값이 없으면 False(꺼짐)로 본다. not → 반대로 바꾼다.
     st.session_state[state_name] = not st.session_state.get(state_name, False)
 
 
+SUPPORT_MESSAGES = [
+    "오늘도 여기까지 온 너, 정말 잘하고 있어!",
+    "어려운 문제 앞에서도 포기하지 않는 네가 멋져!",
+    "천천히 해도 괜찮아. 넌 분명 성장하고 있어!",
+    "지금의 작은 노력이 언젠가 큰 자신감이 될 거야!",
+    "모든 걸 한 번에 이해하지 않아도 괜찮아. 널 응원해!",
+]
+
+
+def open_support_surprise():
+    """서프라이즈를 열고 다음 응원 문구를 선택한다."""
+    next_index = st.session_state.get("support_message_index", -1) + 1
+    st.session_state["support_message_index"] = next_index % len(SUPPORT_MESSAGES)
+    st.session_state["support_surprise_open"] = True
+
+
+@st.dialog("BUG TRACE · 비밀 응원 메시지", width="small")
+def show_support_surprise():
+    """홈 화면과 동일한 픽셀 컴퓨터 캐릭터를 보여 주는 팝업."""
+    message_index = st.session_state.get("support_message_index", 0)
+    render_html(f"""
+        <div class="bt-support-surprise">
+            <div class="bt-support-eyebrow">SECRET MESSAGE UNLOCKED!</div>
+            <div class="bt-support-mascot">{PIXEL_COMPUTER_SVG}</div>
+            <div class="bt-support-heading">오늘도 열심히 탐구하는 너에게!</div>
+            <div class="bt-support-message">{escape(SUPPORT_MESSAGES[message_index])}</div>
+        </div>
+    """)
+    if st.button("학습 계속하기", key="support_surprise_close", type="primary", use_container_width=True):
+        st.session_state["support_surprise_open"] = False
+        st.rerun()
+
+
 def show_window_buttons():
-    """창 버튼 3개(— □ ×)를 진짜로 동작하게 만든다."""
+    """창 버튼 3개(서프라이즈 / 최대화 / 홈)를 동작하게 만든다."""
     is_max = st.session_state.get("win_max", False)
     # horizontal=True: 버튼 3개를 가로로 나란히 놓는다.
     with st.container(key="win_btns", horizontal=True):
-        # — 최소화: 화면 내용을 접는다 / 다시 누르면 펼친다
-        st.button("—", key="win_min_btn", help="최소화 (내용 접기)", on_click=toggle_window, args=("win_min",))
+        # — 버튼: 최소화 대신 홈 화면 캐릭터의 비밀 응원 팝업을 연다.
+        st.button("—", key="win_min_btn", help="작은 서프라이즈", on_click=open_support_surprise)
         # □ 최대화: 모니터 틀을 빼고 화면을 꽉 채운다 / 최대화 중에는 ❐(원래대로) 모양
         st.button("❐" if is_max else "□", key="win_max_btn", help="최대화 / 원래 크기", on_click=toggle_window, args=("win_max",))
         # × 닫기: 프로그램을 닫듯이 첫 화면으로 돌아간다
         if st.button("×", key="win_close_btn", help="닫고 첫 화면으로"):
-            st.session_state["win_min"] = False
             st.switch_page("pages/home.py")
 
 
 def show_window_bar(english_name):
     """모니터 화면 맨 위 '창 제목 줄': 픽셀 컴퓨터 + BUG TRACE + 현재 위치 + 창 버튼(— □ ×)"""
     # 왼쪽 넓은 칸: 로고와 경로(HTML) / 오른쪽 좁은 칸: 진짜 창 버튼(Streamlit 버튼)
-    title_column, button_column = st.columns([6, 1], vertical_alignment="center")
-    with title_column:
-        render_html(f"""
-            <div class="win-bar">
-                <div class="win-logo">{PIXEL_COMPUTER_SVG}<span class="win-title">BUG TRACE</span></div>
-                <div class="win-path">C:\\BUG_TRACE\\{escape(english_name)}&gt;</div>
-            </div>
-        """)
-    with button_column:
-        show_window_buttons()
+    # 버튼 칸을 [4, 1]로 넉넉하게 잡아서, 화면이 좁아도 버튼 3개가 한 줄에 들어가게 한다.
+    with st.container(key="crt_titlebar"):
+        title_column, button_column = st.columns([8, 2], vertical_alignment="center", gap=None)
+        with title_column:
+            render_html(f"""
+                <div class="win-bar">
+                    <div class="win-logo">{PIXEL_COMPUTER_SVG}<span class="win-title">BUG TRACE</span></div>
+                    <div class="win-path">C:\\BUG_TRACE\\{escape(english_name)}&gt;</div>
+                </div>
+            """)
+        with button_column:
+            show_window_buttons()
+    if st.session_state.get("support_surprise_open", False):
+        show_support_surprise()
 
 
 def show_nav(current_page):
@@ -228,7 +264,6 @@ def show_monitor_panel():
         with st.container(key="power"):
             # 전원 버튼: 컴퓨터를 껐다 켜듯이 첫 화면으로 돌아간다
             if st.button("", key="power_btn", icon=":material/power_settings_new:", help="전원: 첫 화면으로"):
-                st.session_state["win_min"] = False
                 st.session_state["win_max"] = False
                 st.switch_page("pages/home.py")
 
@@ -238,18 +273,14 @@ def show_monitor_panel():
 @contextmanager
 def crt_frame(current_page, english_name):
     """레트로 CRT 모니터를 그리고, 그 화면 안에 페이지 내용을 담는다. 창 버튼(— □ ×) 상태도 반영한다."""
-    is_min = st.session_state.get("win_min", False)    # 최소화 중인가?
     is_max = st.session_state.get("win_max", False)    # 최대화 중인가?
     # 최대화 중이면 바깥 틀 이름을 "crt_max"로 바꿔서 CSS로 틀을 얇게, 아래 패널은 숨긴다.
     with st.container(key="crt_max" if is_max else "crt"):     # 모니터 바깥 틀 (베이지 플라스틱)
         with st.container(key="crt_screen"):                    # 모니터 화면 (연두빛 형광 화면)
             show_window_bar(english_name)                      # 1) 창 제목 줄 (+ 진짜 창 버튼) → 화면 위에 고정
             show_nav(current_page)                             # 2) 메뉴 버튼 → 화면 위에 고정
-            if is_min:
-                render_html('<div class="win-min-note">▁ 창이 최소화되어 있어요. 오른쪽 위 <b>—</b> 버튼을 다시 누르면 펼쳐져요.</div>')
-            # 3) 페이지 내용 상자: 높이를 정해 두고(CSS) 이 상자 안에서만 스크롤된다. → 모니터는 움직이지 않는다
-            #    최소화 중이면 상자 이름을 "win_hidden"으로 바꿔서 CSS로 숨긴다. (코드는 그대로 실행됨)
-            with st.container(key="win_hidden" if is_min else "win_body"):
+            # 3) 페이지 내용 상자: 이 상자 안에서 스크롤된다.
+            with st.container(key="win_body"):
                 yield                                          # ← 여기에 각 페이지의 내용이 들어간다
         if not is_max:
             show_monitor_panel()                               # 4) 모니터 아래쪽 (최대화 중에는 숨김)
@@ -305,6 +336,10 @@ def apply_style():
         .st-key-win_body [data-testid="stMarkdownContainer"]:has(> svg) { margin-bottom: 0 !important; }
 
         /* ===== 4) 글꼴 ===== */
+        /* HTML로 그린 글(상자·카드)도 본문 글꼴로: 예전에는 Streamlit 기본 글꼴(Source Sans)이 섞여서
+           괄호·숫자·화살표만 다른 모양으로 보였다. 픽셀 글꼴 같은 따로 정한 글꼴은 그대로 유지된다.
+           word-break: keep-all = 한글 낱말 중간에서 줄을 바꾸지 않는다 (예: '못한/다'처럼 한 글자만 넘어가지 않게) */
+        [data-testid="stMarkdownContainer"] { font-family: 'Noto Sans KR', sans-serif; word-break: keep-all; overflow-wrap: break-word; }
         .stMarkdown p, .stMarkdown li, [data-testid="stWidgetLabel"] p {
             font-family: 'Noto Sans KR', sans-serif; font-size: 1.02rem; line-height: 1.75; color: var(--text);
         }
@@ -313,7 +348,9 @@ def apply_style():
            제목·설명처럼 읽어야 하는 글은 본문 글꼴(Noto Sans KR)로 → 레트로 느낌은 살리고 읽기는 편하게 */
         h1, h2, h3, h4 { font-family: 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; letter-spacing: -0.3px; }
         h2 { font-size: 1.45rem !important; } h3 { font-size: 1.15rem !important; }
-        code, pre { font-family: 'Nanum Gothic Coding', monospace !important; }
+        code, pre { font-family: 'Nanum Gothic Coding', 'Noto Sans KR', monospace !important; }
+        /* 코드 상자(계산 결과 등) 글자가 다른 글보다 작아 보여서 본문과 비슷한 크기로 키운다 */
+        [data-testid="stCode"] pre, [data-testid="stCode"] code { font-size: 1.02rem !important; line-height: 1.65 !important; }
         .stMarkdown code { font-size: 0.98rem !important; font-weight: 700; color: var(--ink) !important; }   /* 글 사이의 짧은 예시(10111 등)가 잘 보이게 */
         .bt-icon {
             font-family: 'Material Symbols Rounded'; font-weight: normal; font-style: normal; font-size: 1.15em;
@@ -326,13 +363,13 @@ def apply_style():
         .st-key-crt {
             background: linear-gradient(165deg, #F6EEDC 0%, #E6D8BA 55%, #D2C2A0 100%);
             border: 3px solid #B9A884; border-radius: clamp(22px, 3vw, 46px);
-            padding: clamp(14px, 2.6vw, 42px) clamp(14px, 3vw, 50px) clamp(8px, 1vw, 14px); gap: 0;
+            padding: clamp(8px, 1.2vw, 18px) clamp(14px, 3vw, 50px) clamp(6px, 0.8vw, 12px); gap: 0;   /* 위쪽 여백을 줄여 내용 칸을 넓힌다 */
             box-shadow: inset 0 5px 0 #FFFAEC, inset 0 -8px 0 #C6B490, 0 20px 34px rgba(70, 55, 30, .30);
         }
         /* 화면: 가운데는 밝고 가장자리는 초록빛으로 어두워지는 CRT 유리 + 가로 주사선 + 진한 초록 테두리
            box-shadow 바깥쪽 고리 2개 = 화면이 플라스틱 틀 안으로 쏙 들어간 '홈'처럼 보이게 한다 */
         .st-key-crt_screen {
-            border-radius: clamp(18px, 2.6vw, 40px); padding: clamp(10px, 1.4vw, 22px) clamp(12px, 1.8vw, 30px); gap: 0.55rem;
+            border-radius: clamp(18px, 2.6vw, 40px); padding: clamp(6px, 0.7vw, 10px) clamp(12px, 1.8vw, 30px) clamp(8px, 1vw, 16px); gap: 0.3rem;
             background:
                 repeating-linear-gradient(0deg, rgba(31, 77, 37, .07) 0px, rgba(31, 77, 37, .07) 1px, transparent 2px, transparent 4px),
                 radial-gradient(ellipse at 50% 45%, #F8FBEA 0%, #EEF5D6 55%, #D9E8AE 85%, #B7D27F 100%);
@@ -342,20 +379,75 @@ def apply_style():
         }
 
         /* 창 제목 줄: 픽셀 컴퓨터 + BUG TRACE + 경로 + 창 버튼 */
-        .win-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 6px; border-bottom: 3px solid var(--ink); }
-        .win-logo { display: flex; align-items: center; gap: 10px; }
-        .win-logo .px-computer { width: 64px; height: auto; }
-        .win-title { font-family: 'Press Start 2P', monospace; font-size: 1.55rem; color: var(--ink); letter-spacing: 1px; }
-        .win-path { flex: 1; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); font-size: 0.95rem; text-align: right; }
+        /* 제목 줄은 얇게: 내용이 보이는 칸을 넓히려고 그림과 글자 크기를 줄였다 */
+        .win-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding-bottom: 0; border-bottom: 3px solid var(--ink); }
+        .win-logo { display: flex; align-items: center; gap: 8px; }
+        .win-logo .px-computer { width: 44px; height: auto; }
+        .win-title { font-family: 'Press Start 2P', monospace; font-size: 1.2rem; color: var(--ink); letter-spacing: 1px; }
+        .win-path { flex: 1; min-width: 0; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); font-size: 0.95rem; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        /* 제목과 버튼을 동일한 높이의 한 줄로 정렬한다. */
+        /* :not(.st-key-win_btns) = 창 버튼 상자는 빼고, 제목 줄의 두 칸(제목 | 버튼)에만 격자를 적용한다.
+           (버튼 상자에도 격자가 적용되면 버튼 3개가 2칸에 억지로 들어가 겹쳤다) */
+        .st-key-crt_titlebar [data-testid="stHorizontalBlock"]:not(.st-key-win_btns) { display: grid !important; grid-template-columns: minmax(0, 1fr) 132px !important; gap: 0 !important; align-items: center !important; }
+        .st-key-crt_titlebar [data-testid="stColumn"] { min-width: 0 !important; width: 100% !important; }
+        .st-key-crt_titlebar [data-testid="stColumn"] > div { min-width: 0 !important; }
+        .st-key-crt_titlebar .win-bar { height: 40px; min-height: 40px; padding: 0 8px 0 0; border-bottom: 0; justify-content: flex-start; gap: 12px; }
+        .st-key-crt_titlebar .win-path { flex: 0 1 auto; }
+        .st-key-crt_titlebar .st-key-win_btns { height: 40px; justify-content: flex-end; gap: 5px; }
+        .st-key-crt_titlebar .st-key-win_btns div.stButton button { width: 38px; min-width: 38px; height: 36px; min-height: 36px; margin: 0; }
+        .st-key-crt_titlebar [data-testid="stVerticalBlock"] { gap: 0 !important; }
         /* 진짜 창 버튼(— □ ×): 작은 정사각형 픽셀 버튼, 오른쪽 끝에 붙인다 */
-        .st-key-win_btns { justify-content: flex-end; gap: 4px; }
+        /* flex-wrap: nowrap = 화면이 좁아도 버튼이 다음 줄로 떨어지지 않고 한 줄에 놓인다 */
+        .st-key-win_btns { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex-wrap: nowrap !important; }
         .st-key-win_btns div.stButton { padding-top: 0; }
-        .st-key-win_btns div.stButton button { min-height: 34px; width: 40px; min-width: 40px; padding: 0; margin: 4px; }
+        /* '작은 크기' 디자인: key가 compact_로 시작하는 상자 안의 버튼·선택지는 작게 그린다.
+           (예시 버튼처럼 보조 역할인 버튼까지 큰 버튼이면 화면을 불필요하게 차지해서, 역할에 맞게 크기를 나눴다) */
+        [class*="st-key-compact_"] { gap: 6px; flex-wrap: wrap; justify-content: flex-start !important; }
+        /* 안의 요소가 남는 폭을 다 차지하지 않고 내용만큼만 → 양끝으로 벌어지지 않고 왼쪽부터 붙어 놓인다 */
+        [class*="st-key-compact_"] > [data-testid="stElementContainer"] { width: auto !important; flex: 0 0 auto !important; }
+        /* 글 속의 짧은 코드(예: 01000010)가 너무 작아 보여서 주변 글자와 비슷하게 */
+        [data-testid="stMarkdownContainer"] code { font-size: 0.95em !important; }
+        [class*="st-key-compact_"] div.stButton { padding-top: 0; }
+        [class*="st-key-compact_"] div.stButton button { min-height: 34px; padding: 2px 12px; margin: 4px 4px 8px; }
+        [class*="st-key-compact_"] div.stButton button p { font-size: 0.92rem !important; }
+        [class*="st-key-compact_"] div[data-testid="stRadio"] > div[role="radiogroup"] > label { min-height: 34px; min-width: 62px; padding: 2px 10px; margin: 3px; }
+        [class*="st-key-compact_"] div[data-testid="stRadio"] > div[role="radiogroup"] > label p { font-size: 0.92rem !important; }
+        .compact-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 0.92rem; margin: 0 2px 0 6px; white-space: nowrap; }
+        .st-key-win_btns div.stButton button { min-height: 30px; width: 34px; min-width: 34px; padding: 0; margin: 0 2px; }
         .st-key-win_btns div.stButton button p { font-family: 'Noto Sans KR', sans-serif !important; font-size: 1.1rem !important; font-weight: 900 !important; }
         .st-key-win_btns div.stButton button:hover { background: var(--lime); }
-        /* 최소화: 내용 상자를 숨기고 안내 한 줄만 보여 준다 */
-        .st-key-win_hidden { display: none !important; }
-        .win-min-note { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); background: var(--paper); border: 3px dashed var(--ink); padding: 10px 14px; }
+        /* 비밀 응원 팝업: 홈 화면의 픽셀 컴퓨터 SVG를 그대로 재사용 */
+        .bt-support-surprise {
+            text-align: center;
+            padding: 8px 8px 18px;
+            color: #1F4D25;
+            font-family: 'Galmuri11', sans-serif;
+        }
+        .bt-support-eyebrow {
+            font-size: .85rem;
+            font-weight: 800;
+            letter-spacing: .04em;
+            color: #426A36;
+        }
+        .bt-support-mascot .px-computer {
+            display: block;
+            width: min(180px, 48vw);
+            height: auto;
+            margin: 14px auto 10px;
+        }
+        .bt-support-heading {
+            font-size: 1.2rem;
+            font-weight: 900;
+            margin: 10px 0;
+        }
+        .bt-support-message {
+            font-size: 1rem;
+            line-height: 1.7;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+            max-width: 430px;
+            margin: 0 auto;
+        }
         /* 최대화: 베이지 틀을 얇게 줄여서 화면이 브라우저를 꽉 채운다 */
         .st-key-crt_max { background: #D9CCAE; border: 3px solid #B9A884; border-radius: 16px; padding: 6px; gap: 0; }
 
@@ -403,7 +495,7 @@ def apply_style():
         div.stButton button[kind="primary"]:hover { background: #D7F57E; }
         /* 메뉴 버튼: 지금 있는 페이지는 라임색 */
         .st-key-nav_active div[data-testid="stPageLink"] a { background: var(--lime) !important; }
-        div[data-testid="stPageLink"] a { justify-content: center; }
+        div[data-testid="stPageLink"] a { justify-content: center; min-height: 40px; margin: 4px 5px 8px; }   /* 메뉴 버튼은 조금 낮게 (위쪽 고정 부분 줄이기) */
         div[data-testid="stPageLink"] a > span:first-child { margin-right: 10px; }   /* 아이콘을 감싼 칸 오른쪽에 간격 → 아이콘과 글자가 붙지 않게 */
         button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--sky) !important; outline-offset: 3px; }
 
@@ -461,6 +553,8 @@ def apply_style():
         .bt-flow-box .bt-icon { font-size: 1.6rem; color: var(--ink); }
         .bt-flow-name { font-family: 'Galmuri11', sans-serif; color: var(--ink); font-weight: 700; margin: 2px 0; }
         .bt-flow-text { color: var(--text); font-size: 0.97rem; line-height: 1.55; }
+        /* 한글 낱글자 고립 줄바꿈을 줄이되, 긴 숫자나 영문은 넘치지 않도록 처리 */
+        .bt-flow-text, .an-step-text, .bt-box, .cat-summary, .home-intro-main { word-break: keep-all; overflow-wrap: anywhere; }
         .bt-flow-out { border-color: var(--red); background: #FBE7DF; }
         .bt-flow-out .bt-icon, .bt-flow-out .bt-flow-name { color: var(--red); }
         .bt-flow-arrow { align-self: center; color: var(--ink); font-size: 1.4rem; font-weight: 800; }
@@ -474,9 +568,9 @@ def apply_style():
         /* 0과 1을 픽셀 칸으로 (현상 실험실 · 오류 검출에서 함께 사용)
            .one = 1(라임) / .zero = 0 / .sign = 부호 비트(빨간 테두리) / .flip = 뒤집힌 칸(빨강) / .par = 패리티 칸(파랑) */
         .bits-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); margin: 8px 0 4px; }
-        .bits { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
-        .bits .byte { display: flex; gap: 2px; }
-        .bits span { width: 20px; height: 28px; line-height: 24px; text-align: center; border: 2px solid var(--ink);
+        .bits { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; max-width: 100%; }
+        .bits .byte { display: flex; gap: 3px; }
+        .bits span { box-sizing: border-box; width: 31px; height: 40px; line-height: 35px; font-size: 1.13rem; text-align: center; border: 2px solid var(--ink);
                      font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); }
         .bits .one { background: var(--lime); }
         .bits .zero { background: var(--paper); }
@@ -490,14 +584,21 @@ def apply_style():
 
         /* ===== 11-1) 고정된 모니터 안에서만 스크롤 =====
            모니터 틀·창 제목 줄·메뉴는 그대로 두고, 페이지 내용 상자(win_body)만 정해진 높이 안에서 스크롤한다.
-           100vh = 브라우저 창 높이. --chrome = 모니터 틀·제목 줄·메뉴·아래 패널이 차지하는 높이 */
-        :root { --chrome: 340px; --chrome-max: 200px; }
+           예전에는 '위아래 고정 부분 = 340px'로 숫자를 정해 두어서, 화면을 확대하거나 노트북처럼 세로가 짧으면 내용 칸이 너무 작아졌다.
+           그래서 모니터 전체를 브라우저 높이(100vh)에 맞추고, 내용 상자가 '남은 공간'을 자동으로 채우게 바꿨다.
+           flex: 1 1 0 = 남은 공간을 모두 차지 / min-height: 0 = 내용이 길어도 상자가 늘어나지 않고 안에서 스크롤 */
         html, body { overflow: hidden; }                                   /* 페이지 전체는 스크롤하지 않는다 */
         [data-testid="stMain"] { overflow: hidden; }
+        /* Streamlit은 상자를 한 겹 더 감싸므로(stLayoutWrapper), 높이는 그 감싼 상자에 준다. 26px = 페이지 위아래 여백 */
+        [data-testid="stLayoutWrapper"]:has(> .st-key-crt), [data-testid="stLayoutWrapper"]:has(> .st-key-crt_max) { height: calc(100vh - 26px); flex: none; }
+        .st-key-crt, .st-key-crt_max { flex: 1 1 0; min-height: 0; }
+        .st-key-crt > [data-testid="stLayoutWrapper"]:has(> .st-key-crt_screen),
+        .st-key-crt_max > [data-testid="stLayoutWrapper"]:has(> .st-key-crt_screen) { flex: 1 1 0; min-height: 0; }
+        .st-key-crt_screen { flex: 1 1 0; min-height: 0; }
+        .st-key-crt_screen > [data-testid="stLayoutWrapper"]:has(> .st-key-win_body) { flex: 1 1 0; min-height: 0; }
         /* !important: Streamlit이 상자에 자동으로 넣는 높이 설정보다 우선하게 한다 */
-        .st-key-win_body { height: calc(100vh - var(--chrome)) !important; max-height: calc(100vh - var(--chrome)) !important; flex: none !important;
+        .st-key-win_body { flex: 1 1 0 !important; min-height: 0 !important; height: auto !important; max-height: none !important;
                            overflow-y: auto !important; overflow-x: hidden; padding: 4px 14px 24px 4px; }
-        .st-key-crt_max .st-key-win_body { height: calc(100vh - var(--chrome-max)) !important; max-height: calc(100vh - var(--chrome-max)) !important; }
         /* 스크롤 막대도 픽셀 느낌으로 */
         .st-key-win_body::-webkit-scrollbar { width: 14px; }
         .st-key-win_body::-webkit-scrollbar-track { background: var(--lime-soft); border-left: 3px solid var(--ink); }
@@ -510,13 +611,13 @@ def apply_style():
         .bt-keypoint-label { font-family: 'Galmuri11', monospace; font-weight: 700; font-size: 0.9rem; }
         .bt-keypoint-text { font-family: 'Noto Sans KR', sans-serif; font-weight: 800; font-size: 1.18rem; line-height: 1.55; }
 
-        /* ===== 11-3) 먼저 알아 둘 용어 (카드 4장) ===== */
+        /* ===== 11-3) 먼저 알아 둘 용어 (화면 폭에 맞춰 카드가 여러 줄로 놓인다) ===== */
         .bt-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 6px; }
         .bt-term { background: var(--paper); border: 2px solid var(--ink); border-top: 6px solid var(--ink); padding: 10px 12px; }
         .bt-term-name { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1rem; margin-bottom: 4px; }
         .bt-term-desc { font-size: 0.95rem; line-height: 1.6; color: var(--text); }
 
-        /* ===== 11-4) 구역 제목 (SYMPTOM · 어떤 현상인가 등) ===== */
+        /* ===== 11-4) 구역 제목 (어떤 현상인가 등) ===== */
         .sec-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1.08rem;
                      border-bottom: 3px solid var(--ink); padding-bottom: 4px; margin: 22px 0 10px; }
 
@@ -532,6 +633,7 @@ def apply_style():
         a.bt-basis-ok:hover { background: var(--lime); }
 
         /* ===== 11-7) 오류 도감의 넓은 사례 카드 ===== */
+        .cat-guide { margin: 10px 8px 14px; padding: 10px 14px; background: var(--paper); border-left: 5px solid var(--ink); color: var(--ink); line-height: 1.6; word-break: keep-all; }
         .cat-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
         .cat-title { font-family: 'Noto Sans KR', sans-serif; font-weight: 800; color: var(--ink); font-size: 1.3rem; margin: 6px 0 2px; }
         .cat-summary { font-size: 1rem; line-height: 1.7; color: var(--text); margin: 4px 0 8px; }
@@ -551,6 +653,10 @@ def apply_style():
             .px-grill, .px-floppy { display: none; }
             .bt-flow { flex-direction: column; } .bt-flow-arrow { transform: rotate(90deg); }
             html, body, [data-testid="stMain"] { overflow: auto; }          /* 휴대폰은 화면이 작아서 페이지 전체 스크롤 */
+            /* 휴대폰: 높이를 맞추지 않고 내용만큼 길게, 페이지 전체를 스크롤한다 */
+            [data-testid="stLayoutWrapper"]:has(> .st-key-crt), [data-testid="stLayoutWrapper"]:has(> .st-key-crt_max) { height: auto; }
+            .st-key-crt, .st-key-crt_max, .st-key-crt_screen, .st-key-win_body,
+            [data-testid="stLayoutWrapper"]:has(> .st-key-crt_screen), [data-testid="stLayoutWrapper"]:has(> .st-key-win_body) { flex: none !important; }
             .st-key-win_body { height: auto !important; max-height: none !important; overflow: visible !important; }
         }
         @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }

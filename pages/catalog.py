@@ -1,71 +1,23 @@
+
 # =============================================================
 # pages/catalog.py  (오류 도감)
 # 탐구 순서를 먼저 보여 주고, 사례마다 넓은 카드에
 # 핵심 원리 · 먼저 알아 둘 용어 · 요약을 담아 보여 준다.
-# 검색 조건은 다른 페이지에 다녀와도 그대로 유지된다. (상태 관리)
+# 두 사례를 필터 없이 모두 보여 주고, 기존 상세 카드의 정보와 이동 기능은 유지한다.
 # =============================================================
 
-from html import escape           # 글자 속 <, > 같은 기호를 안전하게 바꿔 주는 함수
+from html import escape
 
 import streamlit as st
 
 from common import (
-    CATEGORIES, CATEGORY_ICONS, CAUSE_TYPES,
-    crt_frame, icon, load_cases, open_case, page_banner, render_html, search_cases,
+    CAUSE_TYPES,
+    crt_frame, icon, load_cases, open_case, page_banner, render_html,
 )
 
 
 # -------------------------------------------------------------
-# 1. 검색 조건 (상태 관리)
-# -------------------------------------------------------------
-
-def restore_filters():
-    """저장해 둔 검색 조건을 검색창과 분류 버튼에 다시 넣는다."""
-    # Streamlit은 다른 페이지로 이동하면 그 페이지의 입력값(위젯 값)을 지운다.
-    # 그래서 검색 조건을 "saved_..."라는 별도 이름으로 저장해 두었다가, 돌아왔을 때 다시 넣어 준다.
-    if "catalog_keyword" not in st.session_state:
-        st.session_state["catalog_keyword"] = st.session_state.get("saved_keyword", "")
-    if "catalog_category" not in st.session_state:
-        st.session_state["catalog_category"] = st.session_state.get("saved_category", "전체")
-
-
-def save_filters():
-    """검색어나 분류가 바뀔 때마다 별도 이름으로 저장한다."""
-    st.session_state["saved_keyword"] = st.session_state["catalog_keyword"]
-    st.session_state["saved_category"] = st.session_state["catalog_category"]
-
-
-def category_label(category):
-    """분류 버튼에 아이콘을 붙인다. 예) "정수" → ":material/pin: 정수" """
-    return f":material/{CATEGORY_ICONS[category]}: {category}"
-
-
-def show_filters():
-    """검색창과 분류 선택 버튼을 한 줄에 보여 준다."""
-    search_column, category_column = st.columns([3, 2], vertical_alignment="center")
-    with search_column:
-        # key: 입력값이 st.session_state["catalog_keyword"]에 저장된다. on_change: 값이 바뀌면 save_filters 실행
-        st.text_input(
-            "검색",
-            key="catalog_keyword",
-            placeholder="🔍 오류 이름이나 용어를 입력하세요. 예) 2의 보수, 2038, 0.1, 언더플로",
-            on_change=save_filters,
-            label_visibility="collapsed",
-        )
-    with category_column:
-        st.radio(
-            "분류",
-            ["전체"] + CATEGORIES,       # 맨 앞에 "전체"를 붙인 분류 목록
-            key="catalog_category",
-            format_func=category_label,   # 화면에는 아이콘이 붙은 이름으로 보여 준다
-            horizontal=True,
-            on_change=save_filters,
-            label_visibility="collapsed",
-        )
-
-
-# -------------------------------------------------------------
-# 2. 탐구 순서 안내
+# 1. 탐구 순서 안내
 # -------------------------------------------------------------
 
 def show_reading_order(cases):
@@ -83,7 +35,7 @@ def show_reading_order(cases):
 
 
 # -------------------------------------------------------------
-# 3. 넓은 사례 카드
+# 2. 넓은 사례 카드
 # -------------------------------------------------------------
 
 def show_case_row(case):
@@ -118,9 +70,9 @@ def show_case_row(case):
 
 
 def show_case_cards(results):
-    """검색 결과를 넓은 카드로 한 줄에 하나씩 보여 준다."""
-    if not results:      # 결과가 하나도 없을 때 안내 문구
-        st.warning("조건에 맞는 오류가 없어요. 다른 검색어나 분류를 골라 보세요.")
+    """오류 사례를 넓은 카드로 한 줄에 하나씩 보여 준다."""
+    if not results:
+        st.info("등록된 오류 사례가 아직 없어요.")
         return
     for case in results:
         show_case_row(case)
@@ -130,11 +82,7 @@ def show_case_cards(results):
 all_cases = load_cases()
 
 with crt_frame("pages/catalog.py", "CATALOG"):
-    page_banner("menu_book", "ERROR CATALOG", "오류 도감", f"숫자를 정해진 비트에 저장해서 생기는 {len(all_cases)}가지 오류를 깊이 살펴봅니다.")
-    show_reading_order(all_cases)        # 1) 탐구 순서
-    restore_filters()                    # 2) 저장해 둔 검색 조건 되살리기
-    show_filters()                       # 3) 검색창 + 분류 버튼
-
-    # 4) 현재 검색 조건으로 오류 걸러 내고 카드로 보여 주기
-    found_cases = search_cases(all_cases, st.session_state["catalog_keyword"], st.session_state["catalog_category"])
-    show_case_cards(found_cases)
+    page_banner("menu_book", "ERROR CATALOG", "오류 도감", f"숫자를 정해진 개수의 비트에 저장해서 생기는 {len(all_cases)}가지 오류를 깊이 살펴봅니다.")
+    show_reading_order(all_cases)
+    render_html(f'''<div class="cat-guide"><b>총 {len(all_cases)}가지 오류</b> · 정수와 실수의 저장 방식에서 생기는 한계를 차례로 살펴보세요.</div>''')
+    show_case_cards(all_cases)

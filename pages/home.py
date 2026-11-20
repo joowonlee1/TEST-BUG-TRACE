@@ -1,3 +1,4 @@
+
 # =============================================================
 # pages/home.py  (홈 = 첫 화면)
 # 깔끔한 시작 화면: CRT 모니터 안에 픽셀 컴퓨터, BUG TRACE 제목,
@@ -12,7 +13,7 @@ from common import PIXEL_COMPUTER_SVG, render_html, show_monitor_panel
 PIXEL_CURSOR_SVG = """
 <svg class="home-cursor" viewBox="0 0 12 18" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
 <path fill="#1F4D25" d="M0 0h1v1H0zM0 1h2v1H0zM0 2h3v1H0zM0 3h4v1H0zM0 4h5v1H0zM0 5h6v1H0zM0 6h7v1H0zM0 7h8v1H0zM0 8h9v1H0zM0 9h10v1H0zM0 10h6v1H0zM0 11h3v1H0zM4 11h3v1H4zM0 12h2v1H0zM5 12h2v2H5zM0 13h1v1H0zM6 14h2v2H6z"/>
-<path fill="#FBFDF1" d="M1 2h1v1H1zM1 3h2v1H1zM1 4h3v1H1zM1 5h4v1H1zM1 6h5v1H1zM1 7h6v1H1zM1 8h7v1H1zM1 9h3v1H1zM5 9h2v1H5zM1 10h1v1H1z"/>
+<path fill="#FBFDF1" d="M1 2h1v1H1zM1 3h2v1H1zM1 4h3v1H1zM1 5h4v1H1zM1 6h5v1H1zM1 7h6v1H1zM1 8h7v1H1zM1 9h3v1H1zM1 10h1v1H1z"/>
 </svg>
 """
 
@@ -21,9 +22,11 @@ def apply_home_style():
     """첫 화면에만 쓰는 디자인: 화면 높이를 채우는 모니터, 큰 컴퓨터·제목, 소개 상자, 큰 시작 버튼"""
     render_html("""
         <style>
-        /* 모니터 화면이 브라우저 높이를 거의 채우고, 내용은 위아래 가운데에 오게 한다 */
-        /* 100vh = 브라우저 창 높이. 모니터 틀과 아래쪽 패널 높이(약 200px)를 빼서 한 화면에 다 보이게 한다 */
-        .st-key-crt_screen { min-height: calc(100vh - 200px); justify-content: center; }
+        /* 모니터는 common.py에서 브라우저 높이에 딱 맞춰진다. 내용은 위아래 가운데에 놓고,
+           노트북처럼 화면이 낮으면 그림과 글자를 vh(화면 높이의 1%) 기준으로 줄여서 한 화면에 다 들어오게 한다 */
+        .st-key-crt_screen { justify-content: center; overflow-y: auto; }
+        /* 첫 화면은 디자인(CSS) 상자가 모니터 위에 한 칸 더 있어서, 그만큼(20px) 모니터를 낮춘다 */
+        [data-testid="stLayoutWrapper"]:has(> .st-key-crt) { height: calc(100vh - 46px); }
 
         /* 화면 네 귀퉁이의 ㄱ자 빗금 무늬 (가로 빗금 + 아래로 짧은 세로 빗금) */
         .home-corners { display: flex; justify-content: space-between; }
@@ -36,11 +39,12 @@ def apply_home_style():
         .home-corners.bottom .home-corner.right i { margin-left: auto; }
 
         /* 픽셀 컴퓨터 + 제목 상자 (화면 크기에 맞춰 커진다: vw = 화면 폭의 1%) */
-        .home-hero { text-align: center; margin-top: -2vh; }
-        .home-hero .px-computer { width: clamp(130px, 12vw, 230px); height: auto; display: block; margin: 0 auto -0.4vw; }
+        .home-hero { text-align: center; }
+        /* min(가로 기준, 세로 기준): 둘 중 작은 값 → 화면이 낮으면 세로 기준으로 작아진다 */
+        .home-hero .px-computer { width: clamp(80px, min(12vw, 15vh), 230px); height: auto; display: block; margin: 0 auto -0.4vw; }
         .home-title-wrap { display: inline-flex; align-items: flex-end; }
         .home-title-box {
-            position: relative; background: #FBFDF1; padding: 1.6vw 4.6vw 1.2vw; margin: 9px;
+            position: relative; background: #FBFDF1; padding: min(1.6vw, 2.2vh) 4.6vw min(1.2vw, 1.6vh); margin: 9px;
             box-shadow: 0 -8px 0 0 var(--ink), 0 8px 0 0 var(--ink), -8px 0 0 0 var(--ink), 8px 0 0 0 var(--ink),
                         inset 0 -6px 0 0 rgba(31, 77, 37, .12), 0 16px 0 0 rgba(31, 77, 37, .25);
         }
@@ -48,18 +52,21 @@ def apply_home_style():
         .home-title-box span { position: absolute; width: 10px; height: 10px; background: #B9DC6A; }
         .home-title-box .tl { left: 6px; top: 6px; } .home-title-box .tr { right: 6px; top: 6px; }
         .home-title-box .bl { left: 6px; bottom: 6px; } .home-title-box .br { right: 6px; bottom: 6px; }
-        .home-title { font-family: 'Press Start 2P', monospace; font-size: clamp(2rem, 5vw, 4.8rem); color: var(--ink); line-height: 1.1; }
+        .home-title { font-family: 'Press Start 2P', monospace; font-size: clamp(1.8rem, min(5vw, 8vh), 4.8rem); color: var(--ink); line-height: 1.1; }
         .home-cursor { width: clamp(28px, 3vw, 48px); margin: 0 0 -1.6vw -2vw; }
 
         /* 웹앱 간단 소개 */
-        .home-intro { max-width: 900px; margin: 2.2vh auto 0.6vh; text-align: center; }
+        .home-intro { max-width: 900px; margin: 1.6vh auto 0.4vh; text-align: center; }
         .home-intro-main { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: clamp(1.05rem, 1.5vw, 1.5rem); line-height: 1.6; }
         .home-intro-sub { color: var(--dim); font-size: clamp(0.92rem, 1.05vw, 1.1rem); margin-top: 6px; }
-        .home-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 14px 0 18px; }
+        /* 화면 배율 안내: 눈에 띄지만 크지 않게, 점선 테두리의 작은 띠 */
+        .home-zoom { display: inline-block; margin-top: 8px; padding: 3px 12px; border: 2px dashed var(--ink); background: #FBFDF1;
+                     color: var(--ink); font-size: clamp(0.82rem, 0.95vw, 0.98rem); }
+        .home-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 1.4vh 0 1.8vh; }
         .home-chips span { font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); font-size: 0.95rem; background: #FBFDF1; border: 3px solid var(--ink); padding: 4px 12px; }
 
         /* "연구소 들어가기" 큰 시작 버튼 */
-        .st-key-enter_lab div[data-testid="stPageLink"] a { min-height: clamp(60px, 8vh, 84px); background: var(--lime) !important; }
+        .st-key-enter_lab div[data-testid="stPageLink"] a { min-height: clamp(48px, 8vh, 84px); background: var(--lime) !important; }
         .st-key-enter_lab div[data-testid="stPageLink"] a p { font-size: clamp(1.3rem, 1.9vw, 1.9rem) !important; }
         .st-key-enter_lab div[data-testid="stPageLink"] a [data-testid="stIconMaterial"] { font-size: clamp(1.8rem, 2.4vw, 2.6rem) !important; }
         .st-key-enter_lab div[data-testid="stPageLink"] a:hover { background: #D7F57E !important; }
@@ -104,8 +111,9 @@ def show_intro():
     """웹앱 간단 소개: 무엇을 하는 곳인지 한두 줄 + 다루는 주제 이름표"""
     render_html("""
         <div class="home-intro">
-            <div class="home-intro-main">조회수가 갑자기 음수가 되고, 0.1 + 0.2가 0.3이 아닌 이유는?<br>숫자를 정해진 비트에 저장하는 컴퓨터의 한계를 추적하는 디지털 오류 연구소</div>
+            <div class="home-intro-main">조회수가 갑자기 음수가 되고, 0.1 + 0.2가 0.3이 아닌 이유는?<br>숫자 저장의 한계를 추적하는 디지털 오류 연구소</div>
             <div class="home-intro-sub">2가지 사례를 공식 문서를 근거로 깊이 추적하고, 직접 계산해서 확인해요.</div>
+            <div class="home-zoom">🖥️ 브라우저 화면 배율 <b>100%</b>에서 가장 잘 보여요 · 배율이 다르면 <b>Ctrl + 0</b>을 눌러 맞춰 주세요</div>
             <div class="home-chips"><span>정수 오버플로·언더플로</span><span>2038년 문제</span><span>실수 정밀도 오차·언더플로</span><span>오류 검출</span></div>
         </div>
     """)

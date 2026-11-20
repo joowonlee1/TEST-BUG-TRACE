@@ -50,7 +50,7 @@ def show_compare_table():
         rows += (f'<div class="cmp-cell cmp-name">{escape(name)}</div>'
                  f'<div class="cmp-cell">{escape(integer_text)}</div>'
                  f'<div class="cmp-cell">{escape(float_text)}</div>')
-    render_html(f'<div class="sec-label">{icon("table_chart")} TABLE · 항목별 비교</div><div class="cmp-table">{rows}</div>')
+    render_html(f'<div class="sec-label">{icon("table_chart")} 항목별 비교</div><div class="cmp-table">{rows}</div>')
 
 
 # 오버플로·언더플로 4가지: (제목, 상자 색, 설명, 예시 계산, 원인)
@@ -81,7 +81,7 @@ def flow_cell(kind, flow):
 def show_flow_matrix():
     """오버플로와 언더플로를 정수·실수 각각에서 2×2 칸으로 비교한다."""
     render_html(f"""
-        <div class="sec-label">{icon("grid_view")} OVER / UNDER · 오버플로와 언더플로, 정수와 실수에서</div>
+        <div class="sec-label">{icon("grid_view")} 오버플로와 언더플로, 정수와 실수에서</div>
         <div class="bt-box bt-key">
             <div class="bt-box-label">💡 한 줄 정리</div>
             <b>정수</b>에서는 <b>최댓값과 최솟값</b>이 경계이고, <b>부동소수점</b>에서는 값의 <b>절댓값이 너무 크거나 0에 너무 가까울 때</b> 문제가 생겨요.
