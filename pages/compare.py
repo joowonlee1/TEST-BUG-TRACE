@@ -15,7 +15,7 @@ FLOAT_ID = 2      # 실수 사례 번호
 
 # 비교 항목: (항목 이름, 정수 쪽 설명, 실수 쪽 설명)
 COMPARE_ROWS = [
-    ("저장하는 수", "소수점이 없는 수 (예: 조회수, 점수, 초)", "소수점이 있는 수 (예: 0.1, 3.14, 확률)"),
+    ("저장하는 수", "소수점이 없는 수\n예) 조회수, 점수, 초", "소수점이 있는 수\n예) 0.1, 3.14, 확률"),
     ("칸 나누는 방법", "32칸 전부 수 하나 (맨 앞 1칸 = 부호 비트)", "64칸을 부호 1 · 지수 11 · 가수 52로 나눔"),
     ("음수 표현", "2의 보수 (뒤집고 1 더하기)", "부호 칸 하나만 1로 바꿈"),
     ("담을 수 있는 범위", "-2,147,483,648 ~ 2,147,483,647 (32비트)", "약 ±1.8 × 10³⁰⁸ 까지, 0에 가장 가까운 수는 약 4.9 × 10⁻³²⁴"),
@@ -60,7 +60,7 @@ FLOW_CELLS = {
     ("정수", "언더플로"): ("넘어간다", "bt-err", "최솟값보다 작아지면 가장 큰 양수로 넘어가요.",
                           "-2,147,483,648 − 1 → 2,147,483,647", "빌림 때문에 부호 비트가 1에서 0으로 바뀜"),
     ("실수", "오버플로"): ("무한대가 된다", "bt-obs", "절댓값이 너무 커지면(약 1.8 × 10³⁰⁸ 초과) inf(무한대)가 돼요.",
-                          "1.8e308 × 10 → inf", "지수 칸(11비트)으로 더 큰 지수를 나타낼 수 없음"),
+                          "1.8 × 10³⁰⁸ × 10 → 무한대(inf)", "지수 칸(11비트)으로 더 큰 지수를 나타낼 수 없음"),
     ("실수", "언더플로"): ("0이 된다", "bt-obs", "0에 너무 가까워지면 정밀도를 잃다가(비정규 수) 0이 돼요.",
                           "4.9 × 10⁻³²⁴ ÷ 2 → 0.0", "지수 칸으로 더 작은 지수를 나타낼 수 없음"),
 }
@@ -112,7 +112,7 @@ COMPARE_STYLE = """
 .cmp-heads h3 { margin: 6px 0 0 !important; }
 .cmp-cause { font-size: 0.92rem; color: var(--dim); }
 .cmp-table { display: grid; grid-template-columns: 0.8fr 1.6fr 1.6fr; border: 3px solid var(--ink); background: var(--paper); margin-bottom: 8px; }
-.cmp-cell { padding: 8px 12px; border-bottom: 2px solid #C9D9A6; border-right: 2px solid #C9D9A6; font-size: 0.97rem; line-height: 1.6; }
+.cmp-cell { padding: 8px 12px; border-bottom: 2px solid #C9D9A6; border-right: 2px solid #C9D9A6; font-size: 0.97rem; line-height: 1.6; white-space: pre-line; }
 .cmp-th { background: var(--lime); font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); border-bottom: 3px solid var(--ink); }
 .cmp-name { font-weight: 800; color: var(--ink); background: var(--lime-soft); }
 .cmp-matrix { display: grid; grid-template-columns: 90px 1fr 1fr; gap: 8px; align-items: stretch; margin-bottom: 4px; }

@@ -340,9 +340,10 @@ def group_steps(steps):
 def show_steps(case):
     """④ 원인을 #01 → #02 … 순서의 추적 카드로 가로로 나란히 보여 준다. 같은 문서를 근거로 한 단계는 한 카드로 합친다."""
     cards = ""
+    groups = group_steps(case["steps"])
     # enumerate(목록, start=1): 번호(1, 2, 3...)와 단계 묶음을 함께 꺼낸다.
     # 단계 하나는 {"basis": "확인" 또는 "추정", "source": 문서 번호, "text": "설명"} 형태의 딕셔너리다.
-    for step_number, group in enumerate(group_steps(case["steps"]), start=1):
+    for step_number, group in enumerate(groups, start=1):
         texts = "".join(f'<p>{escape(step["text"])}</p>' for step in group)
         cards += f"""
             <div class="an-step">
@@ -352,8 +353,8 @@ def show_steps(case):
         """
     render_html(f"""
         {section_label("troubleshoot", "원인 추적 기록")}
-        <div class="an-steps">{cards}</div>
-    """)
+        <div class="an-steps" style="--cols: {min(len(groups), 5)}">{cards}</div>
+    """)   # --cols = 카드 수만큼 칸을 나눠서 5장까지는 한 줄에 다 놓는다 (아랫줄에 1장만 남아 빈 공간이 생기지 않게)
 
 
 def show_key_point(case):
@@ -407,6 +408,8 @@ def show_video(case):
                 ③ 64비트로 바꾸는 해결 방법
             </div>
         """)
+        # 영상 옆 빈 공간을 쓰려고 실험실 버튼을 안내 상자 바로 아래에 놓는다
+        show_lab_link(case)
 
 
 def show_lab_link(case):
@@ -468,10 +471,13 @@ def apply_anatomy_style():
         .an-grid3 .bt-box { margin: 0; white-space: pre-line; }   /* pre-line: 데이터 속 줄바꿈(\n)을 화면에서도 줄바꿈으로 보여 준다 */
         .an-observed { margin-top: 10px; }
         /* 원인 추적 카드: 화면 폭에 맞춰 한 줄에 최대 4장, 높이는 모두 같게 */
-        .an-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-bottom: 16px; }
-        .an-step { background: var(--paper); border: 3px solid var(--ink); padding: 10px 12px; }
+        .an-steps { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .an-steps { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); } }   /* 좁은 화면에서는 자동으로 줄바꿈 */
+        .an-step { background: var(--paper); border: 3px solid var(--ink); padding: 10px 10px; }
         .an-step-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-        .an-step-head .bt-step-no { flex: none; width: 50px; height: 32px; line-height: 28px; }
+        .an-step-head .bt-step-no { flex: none; width: 42px; height: 32px; line-height: 28px; padding: 0; text-align: center; }
+        /* 카드 5장이 한 줄에 들어가 폭이 좁아져도 '문서로 확인 ↗'이 두 줄로 깨지지 않게 */
+        .an-step-head .bt-basis { white-space: nowrap; padding: 0 3px; margin-left: 4px; letter-spacing: -0.02em; }
         .an-step-text { font-size: 0.98rem; line-height: 1.7; color: var(--text); }
         .an-step-text p { margin: 0 0 6px; }   /* 한 카드에 합쳐진 문장 사이 간격 */
         .an-sources { margin: 0; padding-left: 22px; line-height: 1.9; }
@@ -563,8 +569,9 @@ with crt_frame("pages/anatomy.py", "ANATOMY"):
     show_symptom_row(current_case)            # ④ 증상 · 정상이라면 · 실제로는 (+ 직접 관찰)
     show_flow(current_case)                   # ⑤ 처리 과정
     show_steps(current_case)                  # ⑥ 원인 추적 기록
-    if current_case["video"]:                 # ⑦ 관련 영상이 있는 사례만
+    if current_case["video"]:                 # ⑦ 관련 영상이 있는 사례: 영상 + 옆에 안내와 실험실 버튼
         show_video(current_case)
-    show_lab_link(current_case)               # ⑧ 실험실 버튼
+    else:
+        show_lab_link(current_case)           # ⑧ 영상이 없으면 실험실 버튼만 한 줄로
     show_sources(current_case)                # ⑨ 출처 (누르면 문서가 열린다)
     show_detail_tabs(all_cases, current_case) # ⑩ 아래 탭

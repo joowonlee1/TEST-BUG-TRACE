@@ -354,7 +354,7 @@ def apply_style():
            제목·설명처럼 읽어야 하는 글은 본문 글꼴(Noto Sans KR)로 → 레트로 느낌은 살리고 읽기는 편하게 */
         h1, h2, h3, h4 { font-family: 'SupFix', 'Noto Sans KR', sans-serif !important; font-weight: 800 !important; color: var(--ink) !important; line-height: 1.35 !important; padding: 0.2rem 0 !important; letter-spacing: -0.3px; }
         h2 { font-size: 1.45rem !important; } h3 { font-size: 1.15rem !important; }
-        code, pre { font-family: 'Nanum Gothic Coding', 'SupFix', 'Noto Sans KR', monospace !important; }
+        code, pre { font-family: 'SupFix', 'Nanum Gothic Coding', 'Noto Sans KR', monospace !important; }   /* SupFix를 맨 앞에: 코드 글꼴에 없는 위첨자(⁻³²⁴)가 띄엄띄엄 보이지 않게 */
         /* 코드 상자(계산 결과 등) 글자가 다른 글보다 작아 보여서 본문과 비슷한 크기로 키운다 */
         [data-testid="stCode"] pre, [data-testid="stCode"] code { font-size: 1.02rem !important; line-height: 1.65 !important; }
         .stMarkdown code { font-size: 0.98rem !important; font-weight: 700; color: var(--ink) !important; }   /* 글 사이의 짧은 예시(10111 등)가 잘 보이게 */
@@ -414,7 +414,8 @@ def apply_style():
         /* 안의 요소가 남는 폭을 다 차지하지 않고 내용만큼만 → 양끝으로 벌어지지 않고 왼쪽부터 붙어 놓인다 */
         [class*="st-key-compact_"] > [data-testid="stElementContainer"] { width: auto !important; flex: 0 0 auto !important; }
         /* 글 속의 짧은 코드(예: 01000010)가 너무 작아 보여서 주변 글자와 비슷하게 */
-        [data-testid="stMarkdownContainer"] code { font-size: 0.95em !important; }
+        /* 코드 글꼴은 같은 크기여도 한글보다 작아 보여서 1.05배 + 굵게 */
+        [data-testid="stMarkdownContainer"] code { font-size: 1.05em !important; font-weight: 700; white-space: nowrap; }   /* nowrap: 01000010 0 같은 짧은 예시가 중간에서 줄바꿈되지 않게 */
         [class*="st-key-compact_"] div.stButton { padding-top: 0; }
         [class*="st-key-compact_"] div.stButton button { min-height: 34px; padding: 2px 12px; margin: 4px 4px 8px; }
         [class*="st-key-compact_"] div.stButton button p { font-size: 0.92rem !important; }
@@ -423,13 +424,17 @@ def apply_style():
         /* 슬라이더: 실험을 조절하는 핵심 도구라 눈에 띄게. 테두리 상자 + 두꺼운 막대 + 라임색 네모 손잡이 + 큰 숫자 */
         [data-testid="stSlider"] { background: var(--paper); border: 3px solid var(--ink); padding: 6px 18px 2px; box-shadow: 4px 4px 0 rgba(31,77,37,.2); }
         [data-testid="stSlider"] [data-testid="stWidgetLabel"] p { font-family: 'Galmuri11', sans-serif !important; font-size: 1.02rem !important; }
+        /* 손잡이 위 숫자 상자가 제목 글자와 겹치지 않게 제목 아래를 띄운다 */
+        [data-testid="stSlider"] [data-testid="stWidgetLabel"] { margin-bottom: 18px; }
         [data-testid="stSlider"] [data-baseweb="slider"] > div > div { height: 10px !important; border: 2px solid var(--ink); border-radius: 0 !important; }
         [data-testid="stSlider"] [role="slider"] { width: 24px !important; height: 24px !important; border-radius: 0 !important;
                                                    background: var(--lime) !important; border: 3px solid var(--ink) !important; box-shadow: 3px 3px 0 rgba(31,77,37,.35) !important; }
         [data-testid="stSlider"] [role="slider"]:hover { background: #D7F57E !important; }
         [data-testid="stSliderThumbValue"] { font-family: 'Galmuri11', sans-serif !important; font-weight: 700 !important; font-size: 1rem !important;
                                              color: #FFFFFF !important; background: var(--ink); padding: 0 8px; top: -30px !important; }
-        [data-testid="stSliderTickBar"] { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--dim) !important; }
+        /* 양 끝 숫자(-3, 3 / 0, 255)는 상자 밖으로 삐져나와 아래 글과 겹쳐서 숨긴다. 지금 값은 손잡이 위 숫자로 보인다 */
+        [data-testid="stSliderTickBar"] { display: none !important; }
+        [data-testid="stSlider"] { padding-bottom: 10px; }
         .compact-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 0.92rem; margin: 0 2px 0 6px; white-space: nowrap; }
         .st-key-win_btns div.stButton button { min-height: 30px; width: 34px; min-width: 34px; padding: 0; margin: 0 2px; }
         .st-key-win_btns div.stButton button p { font-family: 'SupFix', 'Noto Sans KR', sans-serif !important; font-size: 1.1rem !important; font-weight: 900 !important; }
@@ -580,7 +585,7 @@ def apply_style():
 
         /* 단계 번호표 (#01 → #02 …) */
         .bt-step-no { flex: 0 0 44px; height: 36px; text-align: center; line-height: 32px; background: var(--lime); color: var(--ink); border: 2px solid var(--ink); font-family: 'Galmuri11', monospace; font-weight: 700; }
-        .bt-basis { display: inline-block; font-family: 'Galmuri11', monospace; font-size: 0.78rem; font-weight: 700; padding: 0 6px; margin-bottom: 2px; background: var(--paper); }
+        .bt-basis { display: inline-block; font-family: 'Galmuri11', monospace; font-size: 0.88rem; font-weight: 700; padding: 0 6px; margin-bottom: 2px; background: var(--paper); }
         .bt-basis-ok { color: #2F6B2A; border: 2px solid #2F6B2A; }
         .bt-basis-guess { color: var(--yellow); border: 2px solid var(--yellow); }
 
@@ -634,7 +639,7 @@ def apply_style():
         .bt-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 6px; }
         .bt-term { background: var(--paper); border: 2px solid var(--ink); border-top: 6px solid var(--ink); padding: 10px 12px; }
         .bt-term-name { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1rem; margin-bottom: 4px; }
-        .bt-term-desc { font-size: 0.95rem; line-height: 1.6; color: var(--text); }
+        .bt-term-desc { font-size: 0.95rem; line-height: 1.6; color: var(--text); white-space: pre-line; }   /* pre-line = 글 속 줄바꿈(\n)을 그대로 보여 줘서 '예)'가 다음 줄에 오게 */
 
         /* ===== 11-4) 구역 제목 (어떤 현상인가 등) ===== */
         .sec-label { font-family: 'Galmuri11', sans-serif; font-weight: 700; color: var(--ink); font-size: 1.08rem;
@@ -646,6 +651,9 @@ def apply_style():
         .st-key-case_pick [data-testid="stWidgetLabel"] p { font-family: 'Galmuri11', sans-serif !important; font-size: 1.05rem !important; }
         .st-key-case_pick div[data-baseweb="select"] > div { min-height: 52px; border-width: 4px; }
         .st-key-case_pick div[data-baseweb="select"] div { font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+        /* 띠가 라임색이라 고른 사례도 라임색이면 안 보인다 → 고른 사례는 진한 초록 + 흰 글자 */
+        .st-key-case_pick div[role="radiogroup"] > label:has(input:checked) { background: var(--ink) !important; }
+        .st-key-case_pick div[role="radiogroup"] > label:has(input:checked) p { color: #FFFFFF !important; }
 
         /* ===== 11-6) '문서로 확인' 이름표 = 누르면 공식 문서가 새 탭에서 열리는 링크 ===== */
         a.bt-basis-ok { text-decoration: none !important; cursor: pointer; }
@@ -656,10 +664,7 @@ def apply_style():
         .cat-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
         .cat-title { font-family: 'SupFix', 'Noto Sans KR', sans-serif; font-weight: 800; color: var(--ink); font-size: 1.3rem; margin: 6px 0 2px; }
         .cat-summary { font-size: 1rem; line-height: 1.7; color: var(--text); margin: 4px 0 8px; }
-        .cat-terms { display: flex; flex-wrap: wrap; gap: 6px; }
-        .cat-terms span { font-size: 0.9rem; background: var(--lime-soft); border: 2px solid var(--ink); padding: 2px 8px; color: var(--ink); cursor: help; }   /* cursor: help = 마우스 모양이 물음표로 바뀌어 설명이 있음을 알려 준다 */
-        .cat-terms span:hover { background: var(--lime); }
-        .cat-terms b { font-family: 'Galmuri11', sans-serif; }
+        .cat-terms-note { font-size: 0.95rem; color: var(--dim); margin-top: 6px; }   /* 도감: 용어는 해부실에 모아 두고 개수만 안내 */
         .cat-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 12px; font-family: 'Galmuri11', sans-serif; color: var(--ink); }
         .cat-flow span { background: var(--paper); border: 2px solid var(--ink); padding: 3px 10px; font-weight: 700; }
         /* ===== 12) 좁은 화면(휴대폰) ===== */

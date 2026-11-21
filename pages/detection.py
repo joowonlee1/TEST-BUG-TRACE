@@ -162,6 +162,10 @@ def show_transmission(data, received, positions):
         check = "✅ 일치" if ok else "❌ 불일치"
         sent_rows += byte_row_html(f"#{index + 1} {chr(sent_byte)}", sent_byte, sent_parity)
         received_rows += byte_row_html(f"#{index + 1}", got_byte, sent_parity, flipped, check)
+    # 표를 읽기 전에 규칙과 색의 뜻을 먼저 알려 준다
+    render_html('<div class="dt-legend">이 실험은 <b>짝수 패리티</b>예요 (1의 총개수를 짝수로 맞춤) · '
+                '<span class="par-chip">0</span> 파랑 칸 = <b>패리티 비트</b> · '
+                '<span class="flip-chip">1</span> 빨강 칸 = 오는 길에 <b>뒤집힌 비트</b></div>')
     send_column, receive_column = st.columns(2)
     with send_column:
         render_html(f'<div class="bits-label">📤 보낸 데이터 (8칸 + 패리티 칸)</div>{sent_rows}')
@@ -205,7 +209,7 @@ def run_detection_lab():
         message = text_column.text_input("보낼 글자 (영어·숫자, 8글자까지)", "BUG", max_chars=8, key="dt_text")
         data = message.encode("ascii", errors="ignore")      # 글자 → 바이트 (영어·숫자만 1글자 = 1바이트)
         if not data:
-            st.info("영어나 숫자를 입력해 주세요. 예) BUG")
+            st.info("영어나 숫자를 입력해 주세요.  \n예) BUG")
             return
         total_bits = len(data) * 8
         # 글자를 줄이면 전에 고른 번호가 범위를 넘을 수 있어서, 입력칸을 그리기 전에 최댓값으로 맞춘다
@@ -214,14 +218,16 @@ def run_detection_lab():
                 st.session_state[key] = total_bits
         first = first_column.number_input(f"뒤집을 비트 ① (0~{total_bits})", 0, total_bits, min(3, total_bits), key="dt_flip1")
         second = second_column.number_input("뒤집을 비트 ② (0 = 안 뒤집기)", 0, total_bits, 0, key="dt_flip2")
-        st.caption("💡 해 볼 것: ② 에 ①과 같은 바이트 안의 번호(예: 3과 5)를 넣어 보세요. 그다음 ①=3, ②=11처럼 다른 바이트의 같은 자리도 넣어 보세요.")
+        # "  \n" = 마크다운에서 줄을 바꾸는 표시 (예시를 다음 줄에 쓰기)
+        st.caption("💡 해 볼 것: ②에 ①과 같은 바이트 안의 번호를 넣고, 그다음 다른 바이트의 같은 자리도 넣어 보세요.  \n"
+                   "예) ①=3, ②=5 (같은 바이트) → ①=3, ②=11 (다른 바이트의 같은 자리)")
 
         positions = [first, second]
         received = flip_bits(data, positions)               # 전달 중 비트가 뒤집혔다고 가정
         caught = show_transmission(data, received, positions)
         sent_sum, received_sum = xor_checksum(data), xor_checksum(received)
-        st.code(f"XOR 체크섬 (보낼 때) : {sent_sum:08b}  ({sent_sum})\n"
-                f"XOR 체크섬 (받은 뒤) : {received_sum:08b}  ({received_sum})")
+        st.code(f"XOR 체크섬 (보낼 때) : {sent_sum:08b}\n"
+                f"XOR 체크섬 (받은 뒤) : {received_sum:08b}  ← 보낼 때와 {'같음' if sent_sum == received_sum else '다름 → 오류 발견'}")
         show_verdict(positions, caught, sent_sum != received_sum)
 
 
@@ -273,9 +279,13 @@ DETECTION_STYLE = """
 .dt-row .bits span { width: 40px; height: 50px; line-height: 45px; font-size: 1.4rem; }   /* 비트가 주인공: 크게 */
 .dt-parity-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0; }
 .dt-parity-grid > div { border:2px solid var(--ink);background:var(--paper);padding:12px; }
-.dt-parity-grid strong { color:var(--ink);background:var(--lime-soft); }
+.dt-parity-grid strong { color:var(--ink); }   /* 형광펜 배경 없이 굵은 글씨만 (형광펜은 쓰지 않기로 함) */
 @media(max-width:700px){.dt-parity-grid{grid-template-columns:1fr}}
 .dt-row .bits { margin: 0; }
+.dt-legend { font-size: 0.98rem; color: var(--text); margin: 6px 0 4px; }
+.dt-legend .par-chip, .dt-legend .flip-chip { display: inline-block; width: 22px; text-align: center; font-weight: 700; border: 2px solid var(--ink); margin: 0 2px; }
+.dt-legend .par-chip { background: #D6E8F7; border-color: var(--sky); color: var(--sky); }
+.dt-legend .flip-chip { background: var(--red); color: #FFFFFF; }
 .dt-name { width: 54px; font-family: 'Galmuri11', monospace; font-weight: 700; color: var(--ink); }
 .dt-check { font-family: 'Galmuri11', sans-serif; font-weight: 700; }
 .dt-compare { display: grid; grid-template-columns: 0.8fr 1.6fr 1.6fr; border: 3px solid var(--ink); background: var(--paper); margin-bottom: 8px; }

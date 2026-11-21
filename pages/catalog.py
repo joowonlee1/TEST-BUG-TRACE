@@ -43,8 +43,7 @@ def show_case_row(case):
     with st.container(border=True):
         info_column, key_column = st.columns([3, 2], vertical_alignment="top")
         with info_column:
-            # 용어 이름표: title= 에 설명을 넣으면 마우스를 올렸을 때 짧은 설명이 뜬다
-            terms = "".join(f'<span title="{escape(t["desc"])}"><b>{escape(t["term"])}</b></span>' for t in case["terms"])
+            # 용어 설명은 원인 해부실(용어 카드 + 자세히 보기)에 한곳으로 모았다. 도감에는 몇 개인지만 알려 준다.
             render_html(f"""
                 <div class="cat-head">
                     <span class="bt-badge bt-badge-on">BUG-{case['id']:03d}</span>
@@ -54,8 +53,7 @@ def show_case_row(case):
                 <div class="cat-title">{escape(case['title'])}</div>
                 <div class="bt-card-nick">“{escape(case['nickname'])}”</div>
                 <div class="cat-summary">{escape(case['summary'])}</div>
-                <div class="bt-box-label" style="color:var(--ink)">{icon("menu_book")} 먼저 알아 둘 용어 (마우스를 올리면 설명이 보여요)</div>
-                <div class="cat-terms">{terms}</div>
+                <div class="cat-terms-note">{icon("menu_book")} 먼저 알아 둘 용어 {len(case['terms'])}개는 <b>원인 추적하기</b>에서 설명과 함께 볼 수 있어요</div>
             """)
         with key_column:
             render_html(f"""
